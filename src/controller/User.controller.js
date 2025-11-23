@@ -1,36 +1,50 @@
 import User from "../model/User.model.js";
-import { generateToken } from "../model/User.model.js";
 import { sendError } from "../helper/Error.helper.js";
+import Company from "../model/Company.model.js";
+import bcrypt from "bcryptjs";
 
 
 export const RegisterUser = async (req, res) => {
-    const { name, email, password, role } = req.body;
-
-    if (!name || !email || !password) {
-        return sendError(res, 400, "Please provide name, email, and password");
-    }
-
     try {
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
-        if (existingUser) {
-            return sendError(res, 400, "User already exists with this email");
+        const { name, email, password, role, company } = req.body;
+
+        if (!name || !email || !password) {
+            return sendError(res, 400, "Please provide all required fields");
         }
 
+        const existing = await User.findOne({ email: email.toLowerCase() });
+        if (existing) return sendError(res, 409, "Email already registered");
+
+        if (["operator"].includes(role)) {
+            if (!company) {
+                return sendError(res, 400, "Company ID is required for operators");
+            }
+            const companyExists = await Company.findById(company);
+            if (!companyExists) return sendError(res, 404, "Company not found");
+        }
+
+        let status = "pending";
+        if (role === "superadmin") status = "approved";
+
         const newUser = await User.create({
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            password: password,
+            name,
+            email: email.toLowerCase(),
+            password,
             role: role || "user",
+            company: company || null,
+            status,
+            approvedBy: role === "superadmin" ? null : undefined,
         });
 
         return res.status(201).json({
             success: true,
-            message: "User registered successfully",
+            message: "Account created successfully, waiting for approval",
             user: {
                 id: newUser._id,
                 name: newUser.name,
                 email: newUser.email,
                 role: newUser.role,
+                status: newUser.status,
             },
         });
 
@@ -49,17 +63,17 @@ export const SignInUser = async (req, res) => {
 
     try {
         const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user) {
-            return sendError(res, 401, "Invalid email or password");
-        }
+        if (!user) return sendError(res, 401, "Invalid email or password");
 
         const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return sendError(res, 401, "Invalid email or password");
 
-        if (!isMatch) {
-            return sendError(res, 401, "Invalid email or password");
+        // Check if account is approved
+        if (user.status !== "approved") {
+            return sendError(res, 403, "Your account is not approved yet");
         }
 
-        const token = generateToken(user._id, user.role);
+        const token = user.generateToken();
 
         return res.status(200).json({
             success: true,
@@ -77,6 +91,7 @@ export const SignInUser = async (req, res) => {
         return sendError(res, 500, "Server error during login");
     }
 };
+
 
 
 export const UpdateUser = async (req, res) => {
@@ -126,5 +141,46 @@ export const UpdateUser = async (req, res) => {
             return sendError(res, 400, "Validation error");
         }
         return sendError(res, 500, "Server error while updating user");
+    }
+};
+
+
+
+export const ApproveUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const approver = req.user;
+
+        const user = await User.findById(id);
+        if (!user) return sendError(res, 404, "User not found");
+
+
+        if (approver.role === "superadmin") {
+            user.status = "approved";
+            user.approvedBy = approver._id;
+            await user.save();
+            return res.status(200).json({ success: true, message: "User approved by SuperAdmin" });
+        }
+
+        if (approver.role === "companyadmin") {
+            if (String(user.company) !== String(approver.company)) {
+                return sendError(res, 403, "You cannot approve users from other companies");
+            }
+
+            user.status = "approved";
+            user.approvedBy = approver._id;
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "User approved by CompanyAdmin",
+            });
+        }
+
+        return sendError(res, 403, "You have no permission to approve users");
+
+    } catch (error) {
+        console.error("Approval Error:", error);
+        return sendError(res, 500, "Server error during approval");
     }
 };

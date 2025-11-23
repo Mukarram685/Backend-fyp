@@ -3,32 +3,61 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const UserSchema = new mongoose.Schema({
-
     name: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
     },
+
     email: {
         type: String,
         required: true,
         unique: true,
-        lowerCase: true
+        lowercase: true,
+        trim: true,
     },
+
     password: {
         type: String,
-        required: true
+        required: true,
+        minlength: 6,
     },
+
     role: {
         type: String,
-        enum: ['user', 'admin', 'operator'],
-        default: 'user'
+        enum: ["superadmin", "companyadmin", "operator", "user"],
+        default: "user",
     },
+
+    company: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Company",
+        default: null,
+    },
+
+    status: {
+        type: String,
+        enum: ["pending", "approved", "rejected"],
+        default: "pending",
+    },
+
+    approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+    },
+
     isVerified: {
         type: Boolean,
-    }
+        default: false,
+    },
 
-}, { timestamps: true })
+    lastLogin: {
+        type: Date,
+    },
+},
+    { timestamps: true }
+);
 
 
 UserSchema.pre("save", async function (next) {
@@ -43,10 +72,16 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-export const generateToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
+UserSchema.methods.generateToken = function () {
+  return jwt.sign(
+    {
+      id: this._id,
+      role: this.role,
+      company: this.company,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 };
 
 const User = mongoose.model('User', UserSchema);
