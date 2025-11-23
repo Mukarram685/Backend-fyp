@@ -1,6 +1,6 @@
-import User from "../model/User.model.js";
-import Company from "../model/Company.model.js";
-import { sendError } from "../helper/Error.helper.js";
+import User from "../../model/User.model.js";
+import Company from "../../model/Company.model.js";
+import { sendError } from "../../helper/Error.helper.js";
 
 export const RegisterOperator = async (req, res) => {
   try {

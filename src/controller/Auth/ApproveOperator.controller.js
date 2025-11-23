@@ -1,4 +1,4 @@
-import User from "../model/User.model.js";
+import User from "../../model/User.model.js";
 
 export const ApproveOperator = async (req, res) => {
   try {

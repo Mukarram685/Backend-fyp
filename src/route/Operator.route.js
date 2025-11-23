@@ -1,7 +1,7 @@
 import express from "express";
-import { RegisterOperator } from "../controller/Operator.controller.js";
+import { RegisterOperator } from "../controller/Auth/Operator.controller.js";
 import { protect, authorizeRoles } from "../middleware/Auth.midleware.js";
-import { ApproveOperator } from "../controller/ApproveOperator.controller.js";
+import { ApproveOperator } from "../controller/Auth/ApproveOperator.controller.js";
 
 const OperatorRouter = express.Router();
 

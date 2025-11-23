@@ -1,5 +1,5 @@
-import Company from "../model/Company.model.js";
-import { sendError } from "../helper/Error.helper.js";
+import Company from "../../model/Company.model.js";
+import { sendError } from "../../helper/Error.helper.js";
 
 export const CreateCompany = async (req, res) => {
   try {

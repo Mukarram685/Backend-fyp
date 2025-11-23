@@ -1,6 +1,6 @@
-import User from "../model/User.model.js";
-import { sendError } from "../helper/Error.helper.js";
-import Company from "../model/Company.model.js";
+import User from "../../model/User.model.js";
+import { sendError } from "../../helper/Error.helper.js";
+import Company from "../../model/Company.model.js";
 import bcrypt from "bcryptjs";
 
 
