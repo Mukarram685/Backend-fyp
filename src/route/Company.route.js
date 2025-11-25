@@ -1,11 +1,21 @@
 import express from "express";
-import { CreateCompany, ApproveCompany } from "../controller/Company.controller.js";
+import {CreateCompany, ApproveCompany, GetCompanies, GetCompany, deteleCompany } from "../controller/Company/Company.controller.js";
 import { protect, authorizeRoles } from "../middleware/Auth.midleware.js";
 
 const CompanyRoute = express.Router();
 
-CompanyRoute.post("/create", protect, authorizeRoles("superadmin"), CreateCompany);
+CompanyRoute.use(protect);
 
-CompanyRoute.put("/approve/:id", protect, authorizeRoles("superadmin"), ApproveCompany);
+CompanyRoute.post("/create", authorizeRoles("superadmin"), CreateCompany);
+
+CompanyRoute.put("/approve/:id", authorizeRoles("superadmin"), ApproveCompany);
+
+CompanyRoute.get("/list", GetCompanies);
+
+CompanyRoute.get("/one/:id", GetCompany);
+
+CompanyRoute.delete("/delete/:id", authorizeRoles("superadmin"), deteleCompany);
+
+
 
 export default CompanyRoute;

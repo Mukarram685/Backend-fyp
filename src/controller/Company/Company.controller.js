@@ -35,8 +35,8 @@ export const CreateCompany = async (req, res) => {
 
 export const ApproveCompany = async (req, res) => {
   try {
-    const { id } = req.params; // company id
-    const { action } = req.body; // "approve" or "reject"
+    const { id } = req.params;
+    const { action } = req.body;
 
     if (!["approve", "reject"].includes(action)) {
       return sendError(res, 400, "Action must be 'approve' or 'reject'");
@@ -52,11 +52,50 @@ export const ApproveCompany = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Company ${action}d successfully`,
+      message: `Company ${action} created successfully`,
       company,
     });
   } catch (error) {
     console.error("ApproveCompany Error:", error);
     return sendError(res, 500, "Server error during company approval");
+  }
+};
+
+
+export const GetCompanies = async (req, res) => {
+  try {
+    // const companies = await Company.find().populate("createdBy", "name email").populate("approvedBy", "name email");
+    const companies = await Company.find().populate("createdBy", "name email");
+    return res.status(200).json({ success: true, companies });
+  } catch (error) {
+    console.error("GetCompanies Error:", error);
+    return sendError(res, 500, "Server error while fetching companies");
+  }
+};
+
+
+export const GetCompany = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const company = await Company.findById(id).populate("createdBy", "name email");
+    if (!company) return sendError(res, 404, "Company not found");
+    return res.status(200).json({ success: true, company });
+  }
+   catch (error) {
+    console.error("GetCompany Error:", error);
+    return sendError(res, 500, "Server error while fetching company");
+   }
+};
+
+export const deteleCompany = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const company = await Company.findById(id);
+    if (!company) return sendError(res, 404, "Company not found");
+    await company.deleteOne();
+    return res.status(200).json({ success: true, message: "Company deleted successfully" });
+  } catch (error) {
+    console.error("DeleteCompany Error:", error);
+    return sendError(res, 500, "Server error while deleting company");
   }
 };
