@@ -67,9 +67,8 @@ export const SignInUser = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return sendError(res, 401, "Invalid email or password");
-
-        // Check if account is approved
-        if (user.status !== "approved") {
+ 
+        if (user.role !== "user" && user.status !== "approved") {
             return sendError(res, 403, "Your account is not approved yet");
         }
 

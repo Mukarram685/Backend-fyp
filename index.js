@@ -8,6 +8,7 @@ import OperatorRouter from './src/route/Operator.route.js';
 import BusRouter from './src/route/Bus.route.js';
 import BusRoute from './src/route/Route.route.js';
 import ScheduleRouter from './src/route/Schedule.route.js';
+import BookingRouter from './src/route/Booking.route.js';
 
 dotenv.config();
 const app = express();
@@ -18,13 +19,13 @@ app.use(cors());
 
 ConnectDB();
 
-
 app.use('/api/v1', Router);
 app.use('/api/v1/companies', CompanyRouter);
 app.use('/api/v1/operatorRoute', OperatorRouter);
 app.use('/api/v1/routes', BusRoute); 
 app.use('/api/v1/buses', BusRouter);
 app.use('/api/v1/schedules', ScheduleRouter);
+app.use('/api/v1/bookings', BookingRouter);
 
 app.listen(process.env.PORT || 5000, () => {
     console.log(`Server is running on port ${process.env.PORT}`);
