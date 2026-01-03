@@ -27,7 +27,10 @@ const BookingSchema = new mongoose.Schema({
         enum: ['pending', 'paid', 'failed'],
         default: 'pending'
     },
-    pnr: { type: String, unique: true }, // Ticket number
+    pnr: {
+        type: String,
+        unique: true
+    }, // Ticket number
     bookingStatus: {
         type: String,
         enum: ['confirmed', 'cancelled'],
@@ -37,6 +40,21 @@ const BookingSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Company'
     },
+    bookingStatus: {
+        type: String,
+        enum: ['confirmed', 'cancelled', 'refunded'],
+        default: 'confirmed'
+    },
+    cancelledAt: {
+        type: Date
+    },
+    refundAmount: {
+        type: Number,
+        default: 0
+    },
+    cancellationReason: {
+        type: String
+    }
 }, { timestamps: true });
 
 BookingSchema.pre('save', function (next) {
