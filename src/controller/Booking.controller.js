@@ -247,3 +247,87 @@ export const getCompanyBookings = async (req, res) => {
     sendError(res, 500, "Failed to fetch company bookings");
   }
 };
+
+// Cancel Ticket - Only if >30 minutes before departure
+export const cancelBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { reason } = req.body; // optional reason
+    const user = req.user;
+
+    const booking = await Booking.findById(bookingId)
+      .populate('schedule');
+
+    if (!booking) return sendError(res, 404, "Booking not found");
+
+    // Only passenger who booked can cancel
+    if (booking.passenger.toString() !== user._id.toString()) {
+      return sendError(res, 403, "You can only cancel your own bookings");
+    }
+
+    if (booking.bookingStatus !== 'confirmed') {
+      return sendError(res, 400, "This booking is already cancelled or refunded");
+    }
+
+    if (booking.paymentStatus !== 'paid') {
+      return sendError(res, 400, "Cannot cancel unpaid booking");
+    }
+
+    // CHECK TIME: Must be >30 minutes before departure
+    const departureDateTime = new Date(
+      booking.schedule.departureDate.toISOString().split('T')[0] + 'T' + booking.schedule.departureTime + ':00'
+    );
+
+    const now = new Date();
+    const timeDifference = departureDateTime - now; // in milliseconds
+    const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in ms
+
+    if (timeDifference <= thirtyMinutes) {
+      return sendError(res, 400, "Cancellation not allowed: Less than 30 minutes to departure");
+    }
+
+    // Calculate refund (example: 90% refund policy)
+    const refundPercentage = 90; // You can make this configurable
+    const refundAmount = Math.round((booking.totalAmount * refundPercentage) / 100);
+
+    // Update booking
+    booking.bookingStatus = 'cancelled';
+    booking.cancelledAt = new Date();
+    booking.refundAmount = refundAmount;
+    booking.cancellationReason = reason || 'Passenger requested cancellation';
+    await booking.save();
+
+    // Free up the seats
+    const seatNumbers = booking.seats.map(s => s.seatNumber);
+    await Schedule.findByIdAndUpdate(
+      booking.schedule,
+      {
+        $pullAll: { bookedSeats: seatNumbers },
+        $inc: { availableSeats: seatNumbers.length }
+      }
+    );
+
+    // In real app: Initiate refund via JazzCash/EasyPaisa API here
+
+    res.json({
+      success: true,
+      message: "Booking cancelled successfully",
+      refund: {
+        amount: refundAmount,
+        percentage: refundPercentage,
+        expectedIn: "3-5 business days",
+        reason: booking.cancellationReason
+      },
+      cancelledBooking: {
+        pnr: booking.pnr,
+        seats: seatNumbers,
+        originalAmount: booking.totalAmount,
+        refundAmount
+      }
+    });
+
+  } catch (error) {
+    console.error("Cancel Error:", error);
+    sendError(res, 500, "Cancellation failed");
+  }
+};
