@@ -1,7 +1,7 @@
-import Booking from '../model/Booking.model.js';
-import Schedule from '../model/Schedule.model.js';
-import { sendError } from '../helper/Error.helper.js';
-import RouteModel from '../model/Route.model.js';
+import Booking from '../../model/Booking.model.js';
+import Schedule from '../../model/Schedule.model.js';
+import { sendError } from '../../helper/Error.helper.js';
+import RouteModel from '../../model/Route.model.js';
 
 export const bookSeats = async (req, res) => {
   try {
@@ -56,19 +56,21 @@ export const bookSeats = async (req, res) => {
     await schedule.save();
 
     await booking.populate([
-      { path: 'schedule', populate: [
-        { path: 'route', select: 'fromCity toCity from to duration' },
-        { path: 'bus', select: 'busNumber type totalSeats amenities' },
-        { path: 'company', select: 'name' }
-      ]},
-      { path: 'passenger', select: 'name email phone' }
+      {
+        path: 'schedule', populate: [
+          { path: 'route', select: 'fromCity toCity from to duration' },
+          { path: 'bus', select: 'busNumber type totalSeats amenities' },
+          { path: 'company', select: 'name' }
+        ]
+      },
+      { path: 'passenger', select: 'name email phoneNumber' }
     ]);
 
     const ticketDetails = {
       pnr: booking.pnr,
       bookingId: booking._id,
       bookerName: booker.name,
-      bookerPhone: booker.phone || booker.email,
+      bookerPhone: booker.phoneNumber || booker.email,
       fromCity: schedule.route.fromCity,
       toCity: schedule.route.toCity,
       fromTerminal: schedule.route.from,
@@ -131,7 +133,7 @@ export const getScheduleBookings = async (req, res) => {
     }
 
     const bookings = await Booking.find({ schedule: scheduleId })
-      .populate('passenger', 'name email phone')
+      .populate('passenger', 'name email phoneNumber')
       .populate('schedule', 'departureDate departureTime')
       .populate('schedule.route', 'fromCity toCity')
       .populate('schedule.bus', 'busNumber')
@@ -180,7 +182,7 @@ export const getRouteBookings = async (req, res) => {
     }
 
     const bookings = await Booking.find({ schedule: { $in: scheduleIds } })
-      .populate('passenger', 'name email phone')
+      .populate('passenger', 'name email phoneNumber')
       .populate({
         path: 'schedule',
         select: 'departureDate departureTime fare',
@@ -219,7 +221,7 @@ export const getCompanyBookings = async (req, res) => {
 
     console.log("Company Bookings Query:", query);
 
-    
+
     const bookings = await Booking.find(query)
       .populate('passenger', 'name email')
       .populate('schedule', 'departureDate departureTime')

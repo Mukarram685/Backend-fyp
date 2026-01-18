@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 
 export const RegisterUser = async (req, res) => {
     try {
-        const { name, email, password, role, company } = req.body;
+        const { name, email, password, role, company, phoneNumber } = req.body;
 
         if (!name || !email || !password) {
             return sendError(res, 400, "Please provide all required fields");
@@ -32,6 +32,7 @@ export const RegisterUser = async (req, res) => {
             password,
             role: role || "user",
             company: company || null,
+            phoneNumber,
             status,
             approvedBy: role === "superadmin" ? null : undefined,
         });
@@ -43,6 +44,7 @@ export const RegisterUser = async (req, res) => {
                 id: newUser._id,
                 name: newUser.name,
                 email: newUser.email,
+                phoneNumber: newUser.phoneNumber,
                 role: newUser.role,
                 status: newUser.status,
             },
@@ -67,7 +69,7 @@ export const SignInUser = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return sendError(res, 401, "Invalid email or password");
- 
+
         if (user.role !== "user" && user.status !== "approved") {
             return sendError(res, 403, "Your account is not approved yet");
         }
@@ -82,6 +84,7 @@ export const SignInUser = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
+                phoneNumber: user.phoneNumber,
                 role: user.role,
             },
         });
@@ -94,7 +97,7 @@ export const SignInUser = async (req, res) => {
 
 
 export const UpdateUser = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, phoneNumber } = req.body;
     const { id } = req.params;
 
     try {
@@ -114,6 +117,7 @@ export const UpdateUser = async (req, res) => {
 
         if (name) updateFields.name = name.trim();
         if (email) updateFields.email = email.toLowerCase().trim();
+        if (phoneNumber) updateFields.phoneNumber = phoneNumber.trim();
         if (password) {
             const salt = await bcrypt.genSalt(12);
             updateFields.password = await bcrypt.hash(password, salt);

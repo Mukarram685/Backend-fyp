@@ -23,6 +23,11 @@ const UserSchema = new mongoose.Schema({
         minlength: 6,
     },
 
+    phoneNumber: {
+        type: Number,
+        trim: true,
+    },
+
     role: {
         type: String,
         enum: ["superadmin", "companyadmin", "operator", "user"],
@@ -73,15 +78,15 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 UserSchema.methods.generateToken = function () {
-  return jwt.sign(
-    {
-      id: this._id,
-      role: this.role,
-      company: this.company,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+    return jwt.sign(
+        {
+            id: this._id,
+            role: this.role,
+            company: this.company,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+    );
 };
 
 const User = mongoose.model('User', UserSchema);
