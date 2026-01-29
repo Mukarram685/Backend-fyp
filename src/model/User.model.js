@@ -26,6 +26,7 @@ const UserSchema = new mongoose.Schema({
     phoneNumber: {
         type: Number,
         trim: true,
+        // required: true,
     },
 
     role: {
@@ -60,6 +61,9 @@ const UserSchema = new mongoose.Schema({
     lastLogin: {
         type: Date,
     },
+    refreshToken: {
+        type: String,
+    }
 },
     { timestamps: true }
 );
@@ -77,7 +81,7 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-UserSchema.methods.generateToken = function () {
+UserSchema.methods.generateAccessToken = function () {
     return jwt.sign(
         {
             id: this._id,
@@ -85,7 +89,17 @@ UserSchema.methods.generateToken = function () {
             company: this.company,
         },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        { expiresIn: process.env.JWT_ACCESS_EXPIRY || "15m" }
+    );
+};
+
+UserSchema.methods.generateRefreshToken = function () {
+    return jwt.sign(
+        {
+            id: this._id,
+        },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: process.env.JWT_REFRESH_EXPIRY || "7d" }
     );
 };
 

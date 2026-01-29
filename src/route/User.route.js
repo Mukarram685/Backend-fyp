@@ -1,5 +1,5 @@
 import express from 'express'
-import { ApproveUser, RegisterUser, SignInUser, UpdateUser } from '../controller/Auth/User.controller.js';
+import { ApproveUser, RegisterUser, SignInUser, UpdateUser, RefreshToken, LogoutUser } from '../controller/Auth/User.controller.js';
 import { protect, authorizeRoles } from "../middleware/Auth.midleware.js";
 
 const Router = express.Router();
@@ -7,6 +7,8 @@ const Router = express.Router();
 
 Router.post('/register', RegisterUser);
 Router.post('/login', SignInUser);
+Router.post('/refresh-token', RefreshToken);
+Router.post('/logout', protect, LogoutUser);
 Router.put('/update/:id', UpdateUser);
 Router.put(
   "/approve/:id",

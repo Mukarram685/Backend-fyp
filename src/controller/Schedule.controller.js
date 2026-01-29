@@ -89,9 +89,8 @@ export const searchSchedules = async (req, res) => {
       return sendError(res, 400, "fromCity, toCity, and date are required");
     }
 
-    // Step 1: Find Route IDs that match fromCity & toCity
     const routes = await Route.find({
-      fromCity: new RegExp(`^${fromCity}$`, 'i'),  // Exact or partial match
+      fromCity: new RegExp(`^${fromCity}$`, 'i'),
       toCity: new RegExp(`^${toCity}$`, 'i')
     }).select('_id');
 
@@ -108,7 +107,6 @@ export const searchSchedules = async (req, res) => {
       });
     }
 
-    // Step 2: Find schedules for those routes on the given date
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
 

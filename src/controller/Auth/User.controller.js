@@ -2,13 +2,14 @@ import User from "../../model/User.model.js";
 import { sendError } from "../../helper/Error.helper.js";
 import Company from "../../model/Company.model.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 
 export const RegisterUser = async (req, res) => {
     try {
         const { name, email, password, role, company, phoneNumber } = req.body;
 
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !phoneNumber) {
             return sendError(res, 400, "Please provide all required fields");
         }
 
@@ -74,12 +75,17 @@ export const SignInUser = async (req, res) => {
             return sendError(res, 403, "Your account is not approved yet");
         }
 
-        const token = user.generateToken();
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshToken = refreshToken;
+        await user.save();
 
         return res.status(200).json({
             success: true,
             message: "Login successful",
-            token,
+            accessToken,
+            refreshToken,
             user: {
                 id: user._id,
                 name: user.name,
@@ -185,5 +191,70 @@ export const ApproveUser = async (req, res) => {
     } catch (error) {
         console.error("Approval Error:", error);
         return sendError(res, 500, "Server error during approval");
+    }
+};
+
+export const RefreshToken = async (req, res) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        return sendError(res, 400, "Refresh Token is required");
+    }
+
+    try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+        const user = await User.findById(decoded.id);
+        if (!user) return sendError(res, 404, "User not found");
+
+        if (user.refreshToken !== refreshToken) {
+            return sendError(res, 401, "Invalid Refresh Token");
+        }
+
+        const newAccessToken = user.generateAccessToken();
+        const newRefreshToken = user.generateRefreshToken();
+
+        user.refreshToken = newRefreshToken;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+        });
+
+    } catch (error) {
+        console.error("Refresh Token Error:", error);
+        if (error.name === "TokenExpiredError") {
+            return sendError(res, 403, "Refresh token expired");
+        }
+        return sendError(res, 403, "Invalid Refresh Token");
+    }
+};
+
+export const LogoutUser = async (req, res) => {
+    try {
+        // Assuming the user is authenticated and req.user is populated by middleware
+        // If not authenticated (e.g. token expired), they should specificy userId or we just rely on client clearing token?
+        // Standard logout invalidates the session (refresh token)
+
+        const userId = req.user ? req.user.id : null;
+        if (!userId) {
+            return sendError(res, 401, "Unauthorized");
+        }
+
+        const user = await User.findById(userId);
+        if (user) {
+            user.refreshToken = null;
+            await user.save();
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Logged out successfully",
+        });
+    } catch (error) {
+        console.error("Logout Error:", error);
+        return sendError(res, 500, "Server error during logout");
     }
 };
