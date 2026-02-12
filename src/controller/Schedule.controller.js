@@ -16,7 +16,7 @@ export const createSchedule = async (req, res) => {
 
     const user = req.user;
 
-    if (!['operator', 'companyadmin'].includes(user.role)) {
+    if (!["operator", "companyadmin"].includes(user.role)) {
       return sendError(res, 403, "Not authorized");
     }
 
@@ -24,15 +24,19 @@ export const createSchedule = async (req, res) => {
     console.log(route);
     if (!route) return sendError(res, 404, "Route not found or not yours");
 
-    const bus = await Bus.findOne({ _id: busId, company: user.company, status: 'active' });
+    const bus = await Bus.findOne({
+      _id: busId,
+      company: user.company,
+      status: 'active',
+    });
     if (!bus) return sendError(res, 404, "Bus not found or inactive");
-
 
     const existing = await Schedule.findOne({
       bus: busId,
-      departureDate: new Date(departureDate)
+      departureDate: new Date(departureDate),
     });
-    if (existing) return sendError(res, 400, "This bus is already scheduled on this date");
+    if (existing)
+      return sendError(res, 400, "This bus is already scheduled on this date");
 
     const schedule = await Schedule.create({
       route: routeId,
@@ -43,12 +47,12 @@ export const createSchedule = async (req, res) => {
       fare,
       availableSeats: bus.totalSeats,
       company: user.company,
-      createdBy: user._id
+      createdBy: user._id,
     });
 
     await schedule.populate([
-      { path: 'route', select: 'fromCity toCity from to' },
-      { path: 'bus', select: 'busNumber type amenities' }
+      { path: "route", select: "fromCity toCity from to" },
+      { path: "bus", select: "busNumber type amenities" },
     ]);
 
     res.status(201).json({
@@ -70,8 +74,8 @@ export const getCompanySchedules = async (req, res) => {
   try {
     const companyId = req.user.company;
     const schedules = await Schedule.find({ company: companyId })
-      .populate('route', 'fromCity toCity from to')
-      .populate('bus', 'busNumber type totalSeats')
+      .populate("route", "fromCity toCity from to")
+      .populate("bus", "busNumber type totalSeats")
       .sort({ departureDate: 1, departureTime: 1 });
 
     res.json({ success: true, count: schedules.length, schedules });
@@ -80,7 +84,6 @@ export const getCompanySchedules = async (req, res) => {
   }
 };
 
-// controllers/schedule.controller.js → searchSchedules
 export const searchSchedules = async (req, res) => {
   try {
     const { fromCity, toCity, date } = req.query;
@@ -89,12 +92,19 @@ export const searchSchedules = async (req, res) => {
       return sendError(res, 400, "fromCity, toCity, and date are required");
     }
 
+    const normalize = (value) => value.trim().replace(/\s+/g, " ");
     const routes = await Route.find({
-      fromCity: new RegExp(`^${fromCity}$`, 'i'),
-      toCity: new RegExp(`^${toCity}$`, 'i')
-    }).select('_id');
+      fromCity: {
+        $regex: normalize(fromCity),
+        $options: "i",
+      },
+      toCity: {
+        $regex: normalize(toCity),
+        $options: "i",
+      },
+    }).select("_id");
 
-    const routeIds = routes.map(r => r._id);
+    const routeIds = routes.map((r) => r._id);
 
     if (routeIds.length === 0) {
       return res.json({
@@ -103,7 +113,7 @@ export const searchSchedules = async (req, res) => {
         fromCity,
         toCity,
         date,
-        schedules: []
+        schedules: [],
       });
     }
 
@@ -117,15 +127,15 @@ export const searchSchedules = async (req, res) => {
       route: { $in: routeIds },
       departureDate: {
         $gte: startOfDay,
-        $lte: endOfDay
+        $lte: endOfDay,
       },
       status: 'active',
-      availableSeats: { $gt: 0 }
+      availableSeats: { $gt: 0 },
     })
-    .populate('route', 'fromCity toCity from to duration')
-    .populate('bus', 'busNumber type amenities totalSeats seatLayout')
-    .populate('company', 'name')
-    .sort({ departureTime: 1 });
+      .populate("route", "fromCity toCity from to duration")
+      .populate("bus", "busNumber type amenities totalSeats seatLayout")
+      .populate("company", "name")
+      .sort({ departureTime: 1 });
 
     res.json({
       success: true,
@@ -133,7 +143,7 @@ export const searchSchedules = async (req, res) => {
       fromCity,
       toCity,
       date,
-      schedules
+      schedules,
     });
 
   } catch (error) {
