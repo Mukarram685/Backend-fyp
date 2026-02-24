@@ -1,3 +1,4 @@
+import { sendError } from "../../helper/Error.helper.js";
 import User from "../../model/User.model.js";
 
 export const ApproveOperator = async (req, res) => {

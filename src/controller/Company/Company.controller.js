@@ -1,4 +1,5 @@
 import Company from "../../model/Company.model.js";
+import User from "../../model/User.model.js";
 import { sendError } from "../../helper/Error.helper.js";
 
 export const CreateCompany = async (req, res) => {
@@ -20,6 +21,10 @@ export const CreateCompany = async (req, res) => {
       createdBy: req.user._id,
       status: "pending",
     });
+
+    if (req.user.role === "companyadmin") {
+      await User.findByIdAndUpdate(req.user._id, { company: company._id });
+    }
 
     return res.status(201).json({
       success: true,
@@ -81,10 +86,10 @@ export const GetCompany = async (req, res) => {
     if (!company) return sendError(res, 404, "Company not found");
     return res.status(200).json({ success: true, company });
   }
-   catch (error) {
+  catch (error) {
     console.error("GetCompany Error:", error);
     return sendError(res, 500, "Server error while fetching company");
-   }
+  }
 };
 
 export const deteleCompany = async (req, res) => {

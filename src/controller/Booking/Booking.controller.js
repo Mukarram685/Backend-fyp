@@ -23,9 +23,12 @@ export const bookSeats = async (req, res) => {
     if (schedule.status !== 'active') return sendError(res, 400, "This trip is no longer available");
     if (schedule.availableSeats < seats.length) return sendError(res, 400, "Not enough seats available");
 
-    const requestedSeatNumbers = seats.map(s => s.seatNumber);
 
-    const alreadyBooked = schedule.bookedSeats.some(seat => requestedSeatNumbers.includes(seat));
+    const requestedSeatNumbers = seats.map(s => Number(s.seatNumber));
+
+    const alreadyBooked = schedule.bookedSeats.some(seat =>
+      requestedSeatNumbers.includes(Number(seat))
+    );
     if (alreadyBooked) {
       return sendError(res, 400, "One or more selected seats are already booked");
     }
