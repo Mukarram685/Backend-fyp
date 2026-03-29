@@ -2,10 +2,13 @@ import Booking from '../../model/Booking.model.js';
 import Schedule from '../../model/Schedule.model.js';
 import { sendError } from '../../helper/Error.helper.js';
 import RouteModel from '../../model/Route.model.js';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const bookSeats = async (req, res) => {
   try {
-    const { scheduleId, seats } = req.body; // seats = array of objects
+    const { scheduleId, seats, paymentIntentId } = req.body; // seats = array of objects
     const booker = req.user; // The person who is paying
 
     if (!scheduleId || !seats || !Array.isArray(seats) || seats.length === 0) {
@@ -45,13 +48,27 @@ export const bookSeats = async (req, res) => {
       }
     }
 
+    let paymentStatus = 'pending';
+    if (paymentIntentId) {
+      try {
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        if (paymentIntent.status !== 'succeeded') {
+          return sendError(res, 400, "Payment was not successful. Booking aborted.");
+        }
+        paymentStatus = 'paid';
+      } catch (stripeError) {
+        console.error("Stripe Verification Error:", stripeError);
+        return sendError(res, 500, "Failed to verify payment with Stripe.");
+      }
+    }
+
     const booking = await Booking.create({
       schedule: scheduleId,
       passenger: booker._id, // The person who logged in & paid
       seats: seats, // Full passenger details for each seat
       totalAmount: schedule.fare * seats.length,
       company: schedule.company._id,
-      paymentStatus: 'pending', // Set to pending for Stripe
+      paymentStatus: paymentStatus,
     });
 
     schedule.bookedSeats.push(...requestedSeatNumbers);

@@ -7,26 +7,28 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const createPaymentIntent = async (req, res) => {
     try {
-        const { bookingId } = req.body;
+        const { scheduleId, seatsCount } = req.body;
 
-        const booking = await Booking.findById(bookingId);
-        if (!booking) return sendError(res, 404, "Booking not found");
-
-        if (booking.paymentStatus === 'paid') {
-            return sendError(res, 400, "Booking is already paid");
+        if (!scheduleId || !seatsCount) {
+             return sendError(res, 400, "scheduleId and seatsCount are required");
         }
 
+        const schedule = await Schedule.findById(scheduleId);
+        if (!schedule) return sendError(res, 404, "Schedule not found");
+
+        const totalAmount = schedule.fare * seatsCount;
+
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: booking.totalAmount * 100, // Stripe expects amount in cents
+            amount: totalAmount * 100, // Stripe expects amount in cents
             currency: 'pkr', // Adjust currency as needed
-            metadata: { bookingId: booking._id.toString() },
             automatic_payment_methods: { enabled: true },
         });
 
         res.json({
             success: true,
             clientSecret: paymentIntent.client_secret,
-            amount: booking.totalAmount
+            amount: totalAmount,
+            paymentIntentId: paymentIntent.id
         });
 
     } catch (error) {
