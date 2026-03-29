@@ -51,7 +51,7 @@ export const bookSeats = async (req, res) => {
       seats: seats, // Full passenger details for each seat
       totalAmount: schedule.fare * seats.length,
       company: schedule.company._id,
-      paymentStatus: 'paid', // Change later if using payment gateway
+      paymentStatus: 'pending', // Set to pending for Stripe
     });
 
     schedule.bookedSeats.push(...requestedSeatNumbers);

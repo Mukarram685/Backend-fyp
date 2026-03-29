@@ -2,7 +2,6 @@ import Route from '../model/Route.model.js';
 import Company from '../model/Company.model.js';
 import { sendError } from '../helper/Error.helper.js';
 
-
 export const createRoute = async (req, res) => {
     try {
         const { from, to, fromCity, toCity, distance, duration } = req.body;
@@ -13,7 +12,9 @@ export const createRoute = async (req, res) => {
         }
 
         const company = await Company.findById(user.company);
-        if (!company || company.status !== 'approved') {
+        console.log('company in route controller', company)
+        if (!company || user.status !== 'approved') {
+            console.log('company not approved', company, user.status)
             return sendError(res, 403, "Your company is not approved yet");
         }
 
@@ -35,6 +36,7 @@ export const createRoute = async (req, res) => {
         });
 
     } catch (error) {
+        console.log('error in route controller', error)
         if (error.code === 11000) {
             return sendError(res, 400, "This route already exists for your company");
         }
