@@ -1,6 +1,6 @@
-import Bus from '../model/Bus.model.js';
-import Company from '../model/Company.model.js';
-import { sendError } from '../helper/Error.helper.js';
+import Bus from '../../model/Bus.model.js';
+import Company from '../../model/Company.model.js';
+import { sendError } from '../../helper/Error.helper.js';
 
 export const createBus = async (req, res) => {
   try {

@@ -1,6 +1,6 @@
-import Route from '../model/Route.model.js';
-import Company from '../model/Company.model.js';
-import { sendError } from '../helper/Error.helper.js';
+import Route from '../../model/Route.model.js';
+import Company from '../../model/Company.model.js';
+import { sendError } from '../../helper/Error.helper.js';
 
 export const createRoute = async (req, res) => {
     try {

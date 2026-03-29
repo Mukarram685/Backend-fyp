@@ -1,7 +1,7 @@
-import Schedule from '../model/Schedule.model.js';
-import Route from '../model/Route.model.js';
-import Bus from '../model/Bus.model.js';
-import { sendError } from '../helper/Error.helper.js';
+import Schedule from '../../model/Schedule.model.js';
+import Route from '../../model/Route.model.js';
+import Bus from '../../model/Bus.model.js';
+import { sendError } from '../../helper/Error.helper.js';
 
 export const createSchedule = async (req, res) => {
   try {
