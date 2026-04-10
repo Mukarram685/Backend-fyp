@@ -6,7 +6,7 @@ import {
   getRouteById,
   updateRoute,
   deleteRoute
-} from '../controller/Route.controller.js';
+} from '../controller/Route/Route.controller.js';
 
 const BusRoute = express.Router();
 

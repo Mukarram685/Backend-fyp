@@ -1,6 +1,6 @@
 import express from 'express';
 import { authorizeRoles, protect } from '../middleware/Auth.midleware.js';
-import { createSchedule, getCompanySchedules, searchSchedules } from '../controller/Schedule.controller.js';
+import { createSchedule, getCompanySchedules, searchSchedules } from '../controller/Schedule/Schedule.controller.js';
 
 const router = express.Router();
 
