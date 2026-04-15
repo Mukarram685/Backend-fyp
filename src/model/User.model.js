@@ -61,6 +61,16 @@ const UserSchema = new mongoose.Schema({
     lastLogin: {
         type: Date,
     },
+    operatorType: {
+        type: String,
+        enum: ["company_manager", "city_manager", "trip_operator"],
+        default: null,
+    },
+    operatorScope: {
+        cities: [{ type: String }],
+        buses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Bus" }],
+        schedules: [{ type: mongoose.Schema.Types.ObjectId, ref: "Schedule" }],
+    },
     refreshToken: {
         type: String,
     }

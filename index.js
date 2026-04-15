@@ -22,14 +22,14 @@ app.use(cors());
 
 ConnectDB();
 
-app.use('/api/v1', Router);
+app.use('/api/v1/operator', OperatorRouter);
 app.use('/api/v1/companies', CompanyRouter);
-app.use('/api/v1/operatorRoute', OperatorRouter);
 app.use('/api/v1/routes', BusRoute);
 app.use('/api/v1/buses', BusRouter);
 app.use('/api/v1/schedules', ScheduleRouter);
 app.use('/api/v1/bookings', BookingRouter);
 app.use('/api/v1/payment', PaymentRouter);
+app.use('/api/v1', Router);
 
 app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
 
