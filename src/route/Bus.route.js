@@ -8,6 +8,7 @@ import {
   deleteBus,
   getAllActiveBuses
 } from '../controller/Bus/Bus.controller.js';
+import { validateScope } from '../middleware/RBAC.middleware.js';
 
 const router = express.Router();
 
@@ -17,8 +18,7 @@ router.use(protect);
 
 router.post('/add', authorizeRoles('companyadmin', 'operator'), createBus);
 router.get('/company', getCompanyBuses);
-router.get('/:id', getBusById);
-router.put('/:id', authorizeRoles('companyadmin', 'operator'), updateBus);
-router.delete('/:id', authorizeRoles('companyadmin', 'operator'), deleteBus);
-
-export default router;
+router.get('/:id', validateScope('bus', 'view'), getBusById);
+router.put('/:id', authorizeRoles('companyadmin', 'operator'), validateScope('bus', 'manage'), updateBus);
+router.delete('/:id', authorizeRoles('companyadmin', 'operator'), validateScope('bus', 'manage'), deleteBus);
+export default router;

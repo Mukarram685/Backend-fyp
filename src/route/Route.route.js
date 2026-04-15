@@ -7,6 +7,7 @@ import {
   updateRoute,
   deleteRoute
 } from '../controller/Route/Route.controller.js';
+import { validateScope } from '../middleware/RBAC.middleware.js';
 
 const BusRoute = express.Router();
 
@@ -16,8 +17,8 @@ BusRoute.use(authorizeRoles('companyadmin', 'operator'));
 
 BusRoute.post('/createRoute', createRoute);
 BusRoute.get('/allRoutes', getCompanyRoutes);
-BusRoute.get('/getRouteByCompany/:id', getRouteById);
-BusRoute.patch('/updateRoute/:id', updateRoute);
-BusRoute.delete('/deleteRoute/:id', deleteRoute);
+BusRoute.get('/getRouteByCompany/:id', validateScope('route', 'view'), getRouteById);
+BusRoute.patch('/updateRoute/:id', validateScope('route', 'manage'), updateRoute);
+BusRoute.delete('/deleteRoute/:id', validateScope('route', 'manage'), deleteRoute);
 
 export default BusRoute;

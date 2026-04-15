@@ -47,6 +47,11 @@ const ScheduleSchema = new mongoose.Schema({
     ref: 'Company',
     required: true
   },
+  operator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
