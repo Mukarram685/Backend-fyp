@@ -1,13 +1,21 @@
 import Schedule from '../../model/Schedule.model.js';
 import Route from '../../model/Route.model.js';
 import Bus from '../../model/Bus.model.js';
+import User from '../../model/User.model.js';
 import { sendError } from '../../helper/Error.helper.js';
+import { logActivity } from '../../helper/Audit.helper.js';
+
+const timeToMinutes = (timeStr) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
 
 export const createSchedule = async (req, res) => {
   try {
     const {
       routeId,
       busId,
+      operatorId,        // Direct operator assignment
       departureDate,     // "2025-04-15"
       departureTime,     // "14:30"
       arrivalTime,       // "20:00"
@@ -16,12 +24,11 @@ export const createSchedule = async (req, res) => {
 
     const user = req.user;
 
-    if (!["operator", "companyadmin"].includes(user.role)) {
+    if (!["companyadmin", "operator"].includes(user.role)) {
       return sendError(res, 403, "Not authorized");
     }
 
     const route = await Route.findOne({ _id: routeId, company: user.company });
-    console.log(route);
     if (!route) return sendError(res, 404, "Route not found or not yours");
 
     const bus = await Bus.findOne({
@@ -31,16 +38,38 @@ export const createSchedule = async (req, res) => {
     });
     if (!bus) return sendError(res, 404, "Bus not found or inactive");
 
-    const existing = await Schedule.findOne({
+    const operator = await User.findOne({ _id: operatorId, role: 'operator', company: user.company });
+    if (!operator) return sendError(res, 404, "Operator not found or belongs to another company");
+
+    const busConflict = await Schedule.findOne({
       bus: busId,
       departureDate: new Date(departureDate),
+      status: 'active'
     });
-    if (existing)
-      return sendError(res, 400, "This bus is already scheduled on this date");
+    if (busConflict) return sendError(res, 400, "This bus is already scheduled on this date");
+
+    const newStart = timeToMinutes(departureTime);
+    const newEnd = timeToMinutes(arrivalTime);
+
+    const operatorSchedules = await Schedule.find({
+      operator: operatorId,
+      departureDate: new Date(departureDate),
+      status: 'active'
+    });
+
+    for (const existing of operatorSchedules) {
+      const exStart = timeToMinutes(existing.departureTime);
+      const exEnd = timeToMinutes(existing.arrivalTime);
+
+      if (newStart < exEnd && newEnd > exStart) {
+        return sendError(res, 400, `Operator is already assigned to another trip (${existing.departureTime} - ${existing.arrivalTime}) at this time.`);
+      }
+    }
 
     const schedule = await Schedule.create({
       route: routeId,
       bus: busId,
+      operator: operatorId,
       departureDate: new Date(departureDate),
       departureTime,
       arrivalTime,
@@ -50,9 +79,12 @@ export const createSchedule = async (req, res) => {
       createdBy: user._id,
     });
 
+    await logActivity(req, 'create_schedule', 'Schedule', schedule._id, `Schedule created for ${departureDate}`);
+
     await schedule.populate([
       { path: "route", select: "fromCity toCity from to" },
       { path: "bus", select: "busNumber type amenities" },
+      { path: "operator", select: "name email" }
     ]);
 
     res.status(201).json({
@@ -62,10 +94,8 @@ export const createSchedule = async (req, res) => {
     });
 
   } catch (error) {
-    if (error.code === 11000) {
-      return sendError(res, 400, "Bus already scheduled on this date");
-    }
-    sendError(res, 500, "Server error");
+    console.error("CreateSchedule Error:", error);
+    sendError(res, 500, "Server error during schedule creation");
   }
 };
 
@@ -76,6 +106,7 @@ export const getCompanySchedules = async (req, res) => {
     const schedules = await Schedule.find({ company: companyId })
       .populate("route", "fromCity toCity from to")
       .populate("bus", "busNumber type totalSeats")
+      .populate("operator", "name email")
       .sort({ departureDate: 1, departureTime: 1 });
 
     res.json({ success: true, count: schedules.length, schedules });
@@ -135,6 +166,7 @@ export const searchSchedules = async (req, res) => {
       .populate("route", "fromCity toCity from to duration")
       .populate("bus", "busNumber type amenities totalSeats seatLayout")
       .populate("company", "name")
+      .populate("operator", "name email")
       .sort({ departureTime: 1 });
 
     res.json({
