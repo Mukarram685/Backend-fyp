@@ -20,5 +20,4 @@ BusRoute.get('/allRoutes', getCompanyRoutes);
 BusRoute.get('/getRouteByCompany/:id', validateScope('route', 'view'), getRouteById);
 BusRoute.patch('/updateRoute/:id', validateScope('route', 'manage'), updateRoute);
 BusRoute.delete('/deleteRoute/:id', validateScope('route', 'manage'), deleteRoute);
-
 export default BusRoute;

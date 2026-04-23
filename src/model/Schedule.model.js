@@ -1,4 +1,4 @@
-// models/Schedule.model.js
+
 import mongoose from 'mongoose';
 
 const ScheduleSchema = new mongoose.Schema({
@@ -62,4 +62,3 @@ const ScheduleSchema = new mongoose.Schema({
 
 ScheduleSchema.index({ bus: 1, departureDate: 1 }, { unique: true });
 
-export default mongoose.model('Schedule', ScheduleSchema);
