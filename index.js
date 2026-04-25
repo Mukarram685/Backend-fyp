@@ -13,6 +13,7 @@ import PaymentRouter from './src/route/Payment.route.js';
 const app = express();
 
 import { stripeWebhook } from './src/controller/Payment/Payment.controller.js';
+import ProfileRouter from './src/route/Profile.route.js';
 app.post('/api/v1/payment/webhook', express.raw({ type: 'application/json' }), stripeWebhook);
 
 app.use(express.json());
@@ -30,6 +31,7 @@ app.use('/api/v1/schedules', ScheduleRouter);
 app.use('/api/v1/bookings', BookingRouter);
 app.use('/api/v1/payment', PaymentRouter);
 app.use('/api/v1', Router);
+app.use('/api/v1/profile', ProfileRouter);
 
 app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
 

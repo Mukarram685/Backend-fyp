@@ -62,3 +62,5 @@ const ScheduleSchema = new mongoose.Schema({
 
 ScheduleSchema.index({ bus: 1, departureDate: 1 }, { unique: true });
 
+export default mongoose.model('Schedule', ScheduleSchema);
+
