@@ -5,7 +5,8 @@ import { ApproveOperator } from "../controller/Auth/ApproveOperator.controller.j
 import { 
   getMyTrips, 
   getTripPassengers, 
-  completeTrip 
+  completeTrip,
+  startTrip 
 } from "../controller/Operator/OperatorTrip.controller.js";
 import { validateScope } from "../middleware/RBAC.middleware.js";
 import { logActivity } from "../helper/Audit.helper.js";
@@ -48,6 +49,14 @@ OperatorRouter.get(
   authorizeRoles("operator"),
   validateScope("schedule"),
   getTripPassengers
+);
+
+OperatorRouter.patch(
+  "/trips/:id/start",
+  protect,
+  authorizeRoles("operator"),
+  validateScope("schedule"),
+  startTrip
 );
 
 OperatorRouter.patch(

@@ -13,11 +13,12 @@ const BusRoute = express.Router();
 
 BusRoute.use(protect);
 
-BusRoute.use(authorizeRoles('companyadmin', 'operator'));
+BusRoute.use(authorizeRoles('companyadmin', 'superadmin'));
 
 BusRoute.post('/createRoute', createRoute);
 BusRoute.get('/allRoutes', getCompanyRoutes);
 BusRoute.get('/getRouteByCompany/:id', validateScope('route', 'view'), getRouteById);
 BusRoute.patch('/updateRoute/:id', validateScope('route', 'manage'), updateRoute);
 BusRoute.delete('/deleteRoute/:id', validateScope('route', 'manage'), deleteRoute);
+
 export default BusRoute;
