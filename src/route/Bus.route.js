@@ -16,9 +16,9 @@ router.get('/all', getAllActiveBuses);
 
 router.use(protect);
 
-router.post('/add', authorizeRoles('companyadmin', 'operator'), createBus);
+router.post('/add', authorizeRoles('companyadmin', 'superadmin'), createBus);
 router.get('/company', getCompanyBuses);
 router.get('/:id', validateScope('bus', 'view'), getBusById);
-router.put('/:id', authorizeRoles('companyadmin', 'operator'), validateScope('bus', 'manage'), updateBus);
-router.delete('/:id', authorizeRoles('companyadmin', 'operator'), validateScope('bus', 'manage'), deleteBus);
-export default router;
+router.put('/:id', authorizeRoles('companyadmin', 'superadmin'), validateScope('bus', 'manage'), updateBus);
+router.delete('/:id', authorizeRoles('companyadmin', 'superadmin'), validateScope('bus', 'manage'), deleteBus);
+export default router;

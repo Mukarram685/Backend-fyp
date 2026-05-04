@@ -33,17 +33,12 @@ const BookingSchema = new mongoose.Schema({
     }, // Ticket number
     bookingStatus: {
         type: String,
-        enum: ['confirmed', 'cancelled'],
+        enum: ['confirmed', 'cancelled', 'refunded'],
         default: 'confirmed'
     },
     company: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Company'
-    },
-    bookingStatus: {
-        type: String,
-        enum: ['confirmed', 'cancelled', 'refunded'],
-        default: 'confirmed'
     },
     cancelledAt: {
         type: Date
