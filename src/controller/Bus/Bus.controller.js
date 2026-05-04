@@ -45,9 +45,8 @@ export const createBus = async (req, res) => {
 // PROTECTED: Only company members can see their buses
 export const getCompanyBuses = async (req, res) => {
   try {
-    const buses = await Bus.find({
-      company: req.user.company
-    }).sort({ createdAt: -1 });
+    const query = req.user.role === 'superadmin' ? {} : { company: req.user.company };
+    const buses = await Bus.find(query).sort({ createdAt: -1 });
 
     res.json({
       success: true,

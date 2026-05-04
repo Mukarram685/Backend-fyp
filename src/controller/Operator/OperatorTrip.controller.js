@@ -53,13 +53,17 @@ export const getTripPassengers = async (req, res) => {
       return sendError(res, 403, 'Not authorized to view passengers for this trip');
     }
 
+    console.log(`Fetching passengers for schedule: ${scheduleId}`);
+
     const bookings = await Booking.find({ 
       schedule: scheduleId, 
-      bookingStatus: 'confirmed' 
+      bookingStatus: { $ne: 'cancelled' } 
     }).populate('passenger', 'name email phoneNumber');
 
+    console.log(`Found ${bookings.length} bookings for schedule ${scheduleId}`);
+
     const passengerList = bookings.flatMap(booking => {
-      return booking.seats.map(seat => ({
+      return (booking.seats || []).map(seat => ({
         seatNumber: seat.seatNumber,
         passengerName: seat.passengerName,
         passengerPhone: seat.passengerPhone,
@@ -115,5 +119,42 @@ export const completeTrip = async (req, res) => {
   } catch (error) {
     console.error('CompleteTrip Error:', error);
     sendError(res, 500, 'Server error while updating trip status');
+  }
+};
+
+export const startTrip = async (req, res) => {
+  try {
+    const { id: scheduleId } = req.params;
+    const operatorId = req.user._id;
+
+    const schedule = await Schedule.findById(scheduleId).populate('bus');
+    if (!schedule) {
+      return sendError(res, 404, 'Trip not found');
+    }
+
+    const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
+    const isAssignedViaBus = schedule.bus.operator.toString() === operatorId.toString();
+
+    if (!isAssignedDirectly && !isAssignedViaBus) {
+      return sendError(res, 403, 'Not authorized to update this trip');
+    }
+
+    if (schedule.status !== 'active') {
+      return sendError(res, 400, `Trip cannot be started because it is already ${schedule.status}`);
+    }
+
+    schedule.status = 'in-progress';
+    await schedule.save();
+
+    await logActivity(req, 'start_trip', 'Schedule', scheduleId, `Operator ${req.user.name} started the trip`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Trip started successfully',
+      trip: schedule
+    });
+  } catch (error) {
+    console.error('StartTrip Error:', error);
+    sendError(res, 500, 'Server error while starting trip');
   }
 };

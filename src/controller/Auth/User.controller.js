@@ -67,7 +67,7 @@ export const SignInUser = async (req, res) => {
     }
 
     try {
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const user = await User.findOne({ email: email.toLowerCase() }).populate('company', 'name');
         if (!user) return sendError(res, 401, "Invalid email or password");
 
         const isMatch = await bcrypt.compare(password, user.password);
