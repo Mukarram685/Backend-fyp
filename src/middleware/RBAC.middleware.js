@@ -13,6 +13,8 @@ export const validateScope = (resourceType, action = 'manage') => {
     const user = req.user;
     const resourceId = req.params.id;
 
+    console.log(`RBAC Check: User=${user._id}, Role=${user.role}, Resource=${resourceType}, ID=${resourceId}`);
+
     // 1. Company Admin has full control over their company's resources
     if (user.role === 'companyadmin') {
       // Basic check: resource must belong to admin's company
@@ -66,15 +68,44 @@ export const validateScope = (resourceType, action = 'manage') => {
 
       // C. Trip Operator: Specific Bus or Schedule
       if (operatorType === 'trip_operator') {
-        if (resourceType === 'bus' && operatorScope.buses.includes(resourceId)) {
+        // First check explicitly assigned scope
+        if (resourceType === 'bus' && operatorScope.buses && operatorScope.buses.includes(resourceId)) {
           return next();
         }
-        if (resourceType === 'schedule' && operatorScope.schedules.includes(resourceId)) {
+        if (resourceType === 'schedule' && operatorScope.schedules && operatorScope.schedules.includes(resourceId)) {
           return next();
         }
-        // Specific case: trip status update
-        if (req.originalUrl.includes('/complete') && operatorScope.schedules.includes(resourceId)) {
-            return next();
+
+        // Fallback: Check database assignment
+        try {
+          if (resourceType === 'schedule') {
+            const schedule = await Schedule.findById(resourceId).populate('bus');
+            if (schedule) {
+              const opId = schedule.operator ? schedule.operator.toString() : 'NONE';
+              const busOpId = (schedule.bus && schedule.bus.operator) ? schedule.bus.operator.toString() : 'NONE';
+              console.log(`Checking Schedule Assignment: opId=${opId}, busOpId=${busOpId}, userId=${user._id}`);
+
+              const isAssignedDirectly = schedule.operator && schedule.operator.toString() === user._id.toString();
+              const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === user._id.toString();
+              
+              if (isAssignedDirectly || isAssignedViaBus) {
+                console.log('Access Granted: Assigned via DB');
+                return next();
+              }
+            } else {
+              console.log('Schedule not found in DB check');
+            }
+          }
+          // ... rest of the code ...
+
+          if (resourceType === 'bus') {
+            const bus = await Bus.findById(resourceId);
+            if (bus && bus.operator && bus.operator.toString() === user._id.toString()) {
+              return next();
+            }
+          }
+        } catch (err) {
+          console.error('RBAC Middleware DB Check Error:', err);
         }
 
         return sendError(res, 403, 'Access denied: Operator not assigned to this trip/bus');

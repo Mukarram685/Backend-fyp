@@ -24,7 +24,7 @@ export const createSchedule = async (req, res) => {
 
     const user = req.user;
 
-    if (!["companyadmin", "operator"].includes(user.role)) {
+    if (!["companyadmin", "superadmin"].includes(user.role)) {
       return sendError(res, 403, "Not authorized");
     }
 
