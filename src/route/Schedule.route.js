@@ -9,7 +9,7 @@ router.get('/search', searchSchedules);
 
 router.use(protect);
 
-router.post('/create', authorizeRoles('operator', 'companyadmin'), createSchedule);
-router.get('/company', getCompanySchedules);
+router.post('/create', authorizeRoles('superadmin', 'companyadmin'), createSchedule);
+router.get('/company', authorizeRoles('superadmin', 'companyadmin'), getCompanySchedules);
 
 export default router;

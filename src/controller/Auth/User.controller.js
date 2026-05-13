@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 
 export const RegisterUser = async (req, res) => {
     try {
-        const { name, email, password, role, company, phoneNumber } = req.body;
+        const { name, email, password, role, company, phoneNumber, operatorType, operatorScope } = req.body;
 
         if (!name || !email || !password || !phoneNumber) {
             return sendError(res, 400, "Please provide all required fields");
@@ -36,6 +36,8 @@ export const RegisterUser = async (req, res) => {
             phoneNumber,
             status,
             approvedBy: role === "superadmin" ? null : undefined,
+            operatorType: role === "operator" ? operatorType : null,
+            operatorScope: role === "operator" ? operatorScope : undefined,
         });
 
         return res.status(201).json({
@@ -65,7 +67,7 @@ export const SignInUser = async (req, res) => {
     }
 
     try {
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const user = await User.findOne({ email: email.toLowerCase() }).populate('company', 'name');
         if (!user) return sendError(res, 401, "Invalid email or password");
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -92,6 +94,7 @@ export const SignInUser = async (req, res) => {
                 email: user.email,
                 phoneNumber: user.phoneNumber,
                 role: user.role,
+                company: user.company,
             },
         });
     } catch (error) {

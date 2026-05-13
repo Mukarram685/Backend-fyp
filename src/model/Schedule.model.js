@@ -1,4 +1,4 @@
-// models/Schedule.model.js
+
 import mongoose from 'mongoose';
 
 const ScheduleSchema = new mongoose.Schema({
@@ -39,12 +39,17 @@ const ScheduleSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['active', 'cancelled', 'completed'],
+    enum: ['active', 'cancelled', 'completed', 'in-progress'],
     default: 'active'
   },
   company: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Company',
+    required: true
+  },
+  operator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
   createdBy: {
@@ -58,3 +63,4 @@ const ScheduleSchema = new mongoose.Schema({
 ScheduleSchema.index({ bus: 1, departureDate: 1 }, { unique: true });
 
 export default mongoose.model('Schedule', ScheduleSchema);
+

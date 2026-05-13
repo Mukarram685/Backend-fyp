@@ -2,45 +2,50 @@ import User from "../../model/User.model.js";
 import Company from "../../model/Company.model.js";
 import { sendError } from "../../helper/Error.helper.js";
 
-export const RegisterOperator = async (req, res) => {
+export const UpdateOperatorScope = async (req, res) => {
   try {
-    const { name, email, password, company } = req.body;
+    const { id } = req.params;
+    const { operatorType, operatorScope } = req.body;
+    const admin = req.user;
 
-    if (!name || !email || !password || !company) {
-      return sendError(res, 400, "Please provide all required fields");
-    }
+    const operator = await User.findOne({ _id: id, company: admin.company });
+    if (!operator) return sendError(res, 404, "Operator not found in your company");
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing) return sendError(res, 409, "Email already registered");
+    if (operatorType) operator.operatorType = operatorType;
+    if (operatorScope) operator.operatorScope = operatorScope;
 
-    const companyExists = await Company.findById(company);
-    if (!companyExists) return sendError(res, 404, "Company not found");
-    if (companyExists.status !== "approved") {
-      return sendError(res, 400, "Cannot add operator to unapproved company");
-    }
+    await operator.save();
 
-    const operator = await User.create({
-      name,
-      email: email.toLowerCase(),
-      password,
-      role: "operator",
-      company,
-      status: "pending",
-    });
-
-    return res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "Operator created successfully. Pending approval from CompanyAdmin.",
+      message: "Operator scope updated successfully",
       operator: {
         id: operator._id,
         name: operator.name,
-        email: operator.email,
-        company: operator.company,
-        status: operator.status,
-      },
+        operatorType: operator.operatorType,
+        operatorScope: operator.operatorScope
+      }
     });
   } catch (error) {
-    console.error("RegisterOperator Error:", error);
-    return sendError(res, 500, "Server error during operator registration");
+    console.error("UpdateOperatorScope Error:", error);
+    return sendError(res, 500, "Server error during scope update");
+  }
+};
+
+export const GetCompanyOperators = async (req, res) => {
+  try {
+    const admin = req.user;
+    const operators = await User.find({ 
+      company: admin.company, 
+      role: "operator" 
+    }).select("-password");
+
+    res.status(200).json({
+      success: true,
+      operators
+    });
+  } catch (error) {
+    console.error("GetCompanyOperators Error:", error);
+    return sendError(res, 500, "Server error while fetching operators");
   }
 };

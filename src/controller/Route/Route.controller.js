@@ -47,10 +47,8 @@ export const createRoute = async (req, res) => {
 
 export const getCompanyRoutes = async (req, res) => {
     try {
-        const routes = await Route.find({
-            company: req.user.company,
-            status: 'active'
-        }).sort({ createdAt: -1 });
+    const query = req.user.role === 'superadmin' ? { status: 'active' } : { company: req.user.company, status: 'active' };
+    const routes = await Route.find(query).sort({ createdAt: -1 });
 
         res.json({
             success: true,
