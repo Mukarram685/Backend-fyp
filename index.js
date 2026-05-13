@@ -23,6 +23,10 @@ app.use(cors());
 
 ConnectDB();
 
+app.get('/', (req, res) => {
+    res.send('Welcome to the Bus Booking API');
+});
+
 app.use('/api/v1/operator', OperatorRouter);
 app.use('/api/v1/companies', CompanyRouter);
 app.use('/api/v1/routes', BusRoute);
