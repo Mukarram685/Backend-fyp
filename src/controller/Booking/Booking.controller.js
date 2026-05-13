@@ -126,14 +126,25 @@ export const bookSeats = async (req, res) => {
 
 
 export const myBookings = async (req, res) => {
-  const bookings = await Booking.find({ passenger: req.user._id })
-    .populate('schedule', 'departureDate departureTime')
-    .populate('schedule.route', 'fromCity toCity from to')
-    .populate('schedule.bus', 'busNumber')
-    .sort({ createdAt: -1 });
+  try {
+    const bookings = await Booking.find({ passenger: req.user._id })
+      .populate({
+        path: 'schedule',
+        populate: [
+          { path: 'route' },
+          { path: 'bus' }
+        ]
+      })
+      .sort({ createdAt: -1 });
 
-  res.json({ success: true, count: bookings.length, bookings });
+    res.json({ success: true, count: bookings.length, bookings });
+  } catch (error) {
+    console.error("My Bookings Error:", error);
+    sendError(res, 500, "Failed to fetch your bookings");
+  }
 };
+
+
 
 
 // 1. Get all bookings for a specific schedule (trip) - Operator / CompanyAdmin
