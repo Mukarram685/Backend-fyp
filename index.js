@@ -18,6 +18,13 @@ import PaymentRouter from './src/route/Payment.route.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Validate Environment Variables
+if (!process.env.MONGO_URL) {
+    console.warn("WARNING: MONGO_URL environment variable is missing. Database connection will fail.");
+}
+
+console.log(`Server initializing... NODE_ENV: ${process.env.NODE_ENV}`);
+
 // Security Middleware
 app.use(helmet());
 
