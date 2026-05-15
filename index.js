@@ -18,23 +18,17 @@ import PaymentRouter from './src/route/Payment.route.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Validate Environment Variables
 if (!process.env.MONGO_URL) {
     console.warn("WARNING: MONGO_URL environment variable is missing. Database connection will fail.");
 }
 
 console.log(`Server initializing... NODE_ENV: ${process.env.NODE_ENV}`);
 
-// Security Middleware
 app.use(helmet());
 
-// Logging
 app.use(morgan('dev'));
-
-// Compression
 app.use(compression());
 
-// Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Limit each IP to 100 requests per window
@@ -68,7 +62,6 @@ app.use('/api/v1/payment', PaymentRouter);
 app.use('/api/v1', Router);
 app.use('/api/v1/profile', ProfileRouter);
 
-// Global Error Handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(err.status || 500).json({
