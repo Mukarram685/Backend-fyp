@@ -33,7 +33,11 @@ app.use('/api/v1/payment', PaymentRouter);
 app.use('/api/v1', Router);
 app.use('/api/v1/profile', ProfileRouter);
 
-app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
+app.get('/', (req, res) => {    
+    res.send('Welcome to the Bus Booking API');
+});
+
+app.listen(process.env.PORT || 5000, () => {
 
     console.log(`Server is running on port ${process.env.PORT}`);
 })
