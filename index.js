@@ -70,6 +70,11 @@ app.use((err, req, res, next) => {
         ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     });
 });
+app.get('/', (req, res) => {    
+    res.send('Welcome to the Bus Booking API');
+});
+
+app.listen(process.env.PORT || 5000, () => {
 
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     app.listen(PORT, () => {
@@ -79,6 +84,6 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
 
 // app.listen(PORT, () => {
 //     console.log(`Server is running on port ${PORT}`);
-// });
+});
 
 export default app;

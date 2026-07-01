@@ -3,6 +3,7 @@ import Schedule from '../../model/Schedule.model.js';
 import { sendError } from '../../helper/Error.helper.js';
 import RouteModel from '../../model/Route.model.js';
 import Stripe from 'stripe';
+import { sendPushNotification } from '../../helper/Notification.helper.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -111,6 +112,21 @@ export const bookSeats = async (req, res) => {
         gender: s.gender
       }))
     };
+
+    // Send push notification to user
+    const notificationTitle = "Booking Confirmed! 🚌";
+    const notificationMessage = `Your booking from ${ticketDetails.fromCity} to ${ticketDetails.toCity} is confirmed! PNR: ${ticketDetails.pnr}`;
+    
+    sendPushNotification(
+      booker._id,
+      notificationTitle,
+      notificationMessage,
+      {
+        bookingId: booking._id.toString(),
+        pnr: ticketDetails.pnr,
+        type: 'booking_confirmation'
+      }
+    ).catch(err => console.error("Error triggering push notification:", err));
 
     res.status(201).json({
       success: true,
