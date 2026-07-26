@@ -7,7 +7,7 @@ import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 
 import ConnectDB from './src/DB/Connection.js';
-import Router from './src/route/User.route.js';
+import UserRouter from './src/route/User.route.js';
 import CompanyRouter from './src/route/Company.route.js';
 import OperatorRouter from './src/route/Operator.route.js';
 import BusRouter from './src/route/Bus.route.js';
@@ -59,7 +59,7 @@ app.use('/api/v1/buses', BusRouter);
 app.use('/api/v1/schedules', ScheduleRouter);
 app.use('/api/v1/bookings', BookingRouter);
 app.use('/api/v1/payment', PaymentRouter);
-app.use('/api/v1', Router);
+app.use('/api/v1', UserRouter);
 app.use('/api/v1/profile', ProfileRouter);
 
 app.use((err, req, res, next) => {

@@ -15,10 +15,8 @@ export const validateScope = (resourceType, action = 'manage') => {
 
     console.log(`RBAC Check: User=${user._id}, Role=${user.role}, Resource=${resourceType}, ID=${resourceId}`);
 
-    // 1. Company Admin has full control over their company's resources
-    if (user.role === 'companyadmin') {
-      // Basic check: resource must belong to admin's company
-      // This is usually handled in the controller, but can be pre-checked here if resourceId is provided
+    // 1. Superadmin and Company Admin have full control over resources
+    if (user.role === 'superadmin' || user.role === 'companyadmin') {
       return next();
     }
 

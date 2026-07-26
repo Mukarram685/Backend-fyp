@@ -80,7 +80,7 @@ export const getBusById = async (req, res) => {
     const bus = await Bus.findById(req.params.id);
     if (!bus) return sendError(res, 404, "Bus not found");
 
-    if (bus.company.toString() !== req.user.company.toString()) {
+    if (req.user.role !== 'superadmin' && bus.company.toString() !== req.user.company.toString()) {
       return sendError(res, 403, "Not authorized");
     }
 
@@ -97,7 +97,7 @@ export const updateBus = async (req, res) => {
     const bus = await Bus.findById(req.params.id);
     if (!bus) return sendError(res, 404, "Bus not found");
 
-    if (bus.company.toString() !== req.user.company.toString()) {
+    if (req.user.role !== 'superadmin' && bus.company.toString() !== req.user.company.toString()) {
       return sendError(res, 403, "Not authorized");
     }
 
@@ -118,7 +118,7 @@ export const deleteBus = async (req, res) => {
     const bus = await Bus.findById(req.params.id);
     if (!bus) return sendError(res, 404, "Bus not found");
 
-    if (bus.company.toString() !== req.user.company.toString()) {
+    if (req.user.role !== 'superadmin' && bus.company.toString() !== req.user.company.toString()) {
       return sendError(res, 403, "Not authorized");
     }
 

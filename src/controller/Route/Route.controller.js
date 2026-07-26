@@ -65,7 +65,7 @@ export const getRouteById = async (req, res) => {
         const route = await Route.findById(req.params.id);
         if (!route) return sendError(res, 404, "Route not found");
 
-        if (route.company.toString() !== req.user.company.toString()) {
+        if (req.user.role !== 'superadmin' && route.company.toString() !== req.user.company.toString()) {
             return sendError(res, 403, "Not authorized");
         }
 
@@ -83,7 +83,7 @@ export const updateRoute = async (req, res) => {
         const route = await Route.findById(id);
         if (!route) return sendError(res, 404, "Route not found");
 
-        if (route.company.toString() !== req.user.company.toString()) {
+        if (req.user.role !== 'superadmin' && route.company.toString() !== req.user.company.toString()) {
             return sendError(res, 403, "Not authorized");
         }
 
@@ -106,7 +106,7 @@ export const deleteRoute = async (req, res) => {
         const route = await Route.findById(id);
         if (!route) return sendError(res, 404, "Route not found");
 
-        if (route.company.toString() !== req.user.company.toString()) {
+        if (req.user.role !== 'superadmin' && route.company.toString() !== req.user.company.toString()) {
             return sendError(res, 403, "Not authorized");
         }
 

@@ -12,7 +12,7 @@ const BusRoute = express.Router();
 
 BusRoute.use(protect);
 
-BusRoute.use(authorizeRoles('companyadmin', 'operator'));
+BusRoute.use(authorizeRoles('superadmin', 'companyadmin', 'operator'));
 
 BusRoute.post('/createRoute', createRoute);
 BusRoute.get('/allRoutes', getCompanyRoutes);

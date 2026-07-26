@@ -237,10 +237,6 @@ export const RefreshToken = async (req, res) => {
 
 export const LogoutUser = async (req, res) => {
     try {
-        // Assuming the user is authenticated and req.user is populated by middleware
-        // If not authenticated (e.g. token expired), they should specificy userId or we just rely on client clearing token?
-        // Standard logout invalidates the session (refresh token)
-
         const userId = req.user ? req.user.id : null;
         if (!userId) {
             return sendError(res, 401, "Unauthorized");

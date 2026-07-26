@@ -2,15 +2,15 @@ import express from 'express'
 import { ApproveUser, RegisterUser, SignInUser, UpdateUser, RefreshToken, LogoutUser } from '../controller/Auth/User.controller.js';
 import { protect, authorizeRoles } from "../middleware/Auth.midleware.js";
 
-const Router = express.Router();
+const UserRouter = express.Router();
 
 
-Router.post('/register', RegisterUser);
-Router.post('/login', SignInUser);
-Router.post('/refresh-token', RefreshToken);
-Router.post('/logout', protect, LogoutUser);
-Router.put('/update/:id', UpdateUser);
-Router.put(
+UserRouter.post('/register', RegisterUser);
+UserRouter.post('/login', SignInUser);
+UserRouter.post('/refresh-token', RefreshToken);
+UserRouter.post('/logout', protect, LogoutUser);
+UserRouter.put('/update/:id', UpdateUser);
+UserRouter.put(
   "/approve/:id",
   protect,
   authorizeRoles("superadmin", "companyadmin"),
@@ -18,5 +18,5 @@ Router.put(
 );
 
 
-export default Router;
+export default UserRouter;
 
