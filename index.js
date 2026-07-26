@@ -50,10 +50,11 @@ app.use(cors());
 
 ConnectDB();
 
-// Run automatic payout engine check every 5 minutes in background
-setInterval(processAutomaticPayouts, 5 * 60 * 1000);
-// Also run once immediately on startup
-setTimeout(processAutomaticPayouts, 10000);
+// Run automatic payout engine check every 5 minutes in background (only when NOT on Vercel)
+if (!process.env.VERCEL) {
+    setInterval(processAutomaticPayouts, 5 * 60 * 1000);
+    setTimeout(processAutomaticPayouts, 10000);
+}
 
 app.get('/', (req, res) => {
     res.send('Welcome to the Bus Booking API');
