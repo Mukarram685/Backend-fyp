@@ -15,6 +15,8 @@ import BusRoute from './src/route/Route.route.js';
 import ScheduleRouter from './src/route/Schedule.route.js';
 import BookingRouter from './src/route/Booking.route.js';
 import PaymentRouter from './src/route/Payment.route.js';
+import PayoutRouter from './src/route/Payout.route.js';
+import { processAutomaticPayouts } from './src/controller/Payout/Payout.controller.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -48,6 +50,11 @@ app.use(cors());
 
 ConnectDB();
 
+// Run automatic payout engine check every 5 minutes in background
+setInterval(processAutomaticPayouts, 5 * 60 * 1000);
+// Also run once immediately on startup
+setTimeout(processAutomaticPayouts, 10000);
+
 app.get('/', (req, res) => {
     res.send('Welcome to the Bus Booking API');
 });
@@ -59,6 +66,7 @@ app.use('/api/v1/buses', BusRouter);
 app.use('/api/v1/schedules', ScheduleRouter);
 app.use('/api/v1/bookings', BookingRouter);
 app.use('/api/v1/payment', PaymentRouter);
+app.use('/api/v1/payout', PayoutRouter);
 app.use('/api/v1', UserRouter);
 app.use('/api/v1/profile', ProfileRouter);
 
