@@ -8,8 +8,9 @@ export const UpdateOperatorScope = async (req, res) => {
     const { operatorType, operatorScope } = req.body;
     const admin = req.user;
 
-    const operator = await User.findOne({ _id: id, company: admin.company });
-    if (!operator) return sendError(res, 404, "Operator not found in your company");
+    const query = admin.role === "superadmin" ? { _id: id } : { _id: id, company: admin.company };
+    const operator = await User.findOne(query);
+    if (!operator) return sendError(res, 404, "Operator not found");
 
     if (operatorType) operator.operatorType = operatorType;
     if (operatorScope) operator.operatorScope = operatorScope;
@@ -35,10 +36,8 @@ export const UpdateOperatorScope = async (req, res) => {
 export const GetCompanyOperators = async (req, res) => {
   try {
     const admin = req.user;
-    const operators = await User.find({ 
-      company: admin.company, 
-      role: "operator" 
-    }).select("-password");
+    const query = admin.role === "superadmin" ? { role: "operator" } : { company: admin.company, role: "operator" };
+    const operators = await User.find(query).select("-password").populate("company", "name");
 
     res.status(200).json({
       success: true,

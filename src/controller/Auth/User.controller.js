@@ -94,7 +94,9 @@ export const SignInUser = async (req, res) => {
                 email: user.email,
                 phoneNumber: user.phoneNumber,
                 role: user.role,
-                company: user.company,
+                // company: user.company,
+                // operatorType: user.operatorType,
+                // operatorScope: user.operatorScope,
             },
         });
     } catch (error) {
@@ -102,7 +104,6 @@ export const SignInUser = async (req, res) => {
         return sendError(res, 500, "Server error during login");
     }
 };
-
 
 
 export const UpdateUser = async (req, res) => {

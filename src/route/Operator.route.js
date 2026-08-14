@@ -16,7 +16,7 @@ const OperatorRouter = express.Router();
 OperatorRouter.get(
   "/company",
   protect,
-  authorizeRoles("companyadmin"),
+  authorizeRoles("companyadmin", "superadmin"),
   GetCompanyOperators
 );
 
@@ -25,14 +25,14 @@ OperatorRouter.get(
 OperatorRouter.put(
   "/approve/:id",
   protect,
-  authorizeRoles("companyadmin"),
+  authorizeRoles("companyadmin", "superadmin"),
   ApproveOperator
 );
 
 OperatorRouter.put(
   "/scope/:id",
   protect,
-  authorizeRoles("companyadmin"),
+  authorizeRoles("companyadmin", "superadmin"),
   UpdateOperatorScope
 );
 
@@ -46,7 +46,7 @@ OperatorRouter.get(
 OperatorRouter.get(
   "/trips/:id/passengers",
   protect,
-  authorizeRoles("operator"),
+  authorizeRoles("operator", "companyadmin", "superadmin"),
   validateScope("schedule"),
   getTripPassengers
 );

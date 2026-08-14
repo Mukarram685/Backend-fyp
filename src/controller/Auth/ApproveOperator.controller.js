@@ -18,7 +18,7 @@ export const ApproveOperator = async (req, res) => {
       return sendError(res, 400, "This user is not an operator");
     }
 
-    if (String(operator.company) !== String(companyAdmin.company)) {
+    if (companyAdmin.role !== "superadmin" && String(operator.company) !== String(companyAdmin.company)) {
       return sendError(res, 403, "You cannot approve operators from another company");
     }
 

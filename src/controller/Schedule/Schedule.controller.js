@@ -28,17 +28,16 @@ export const createSchedule = async (req, res) => {
       return sendError(res, 403, "Not authorized");
     }
 
-    const route = await Route.findOne({ _id: routeId, company: user.company });
+    const routeQuery = user.role === 'superadmin' ? { _id: routeId } : { _id: routeId, company: user.company };
+    const route = await Route.findOne(routeQuery);
     if (!route) return sendError(res, 404, "Route not found or not yours");
 
-    const bus = await Bus.findOne({
-      _id: busId,
-      company: user.company,
-      status: 'active',
-    });
+    const busQuery = user.role === 'superadmin' ? { _id: busId, status: 'active' } : { _id: busId, company: user.company, status: 'active' };
+    const bus = await Bus.findOne(busQuery);
     if (!bus) return sendError(res, 404, "Bus not found or inactive");
 
-    const operator = await User.findOne({ _id: operatorId, role: 'operator', company: user.company });
+    const operatorQuery = user.role === 'superadmin' ? { _id: operatorId, role: 'operator' } : { _id: operatorId, role: 'operator', company: user.company };
+    const operator = await User.findOne(operatorQuery);
     if (!operator) return sendError(res, 404, "Operator not found or belongs to another company");
 
     const busConflict = await Schedule.findOne({
@@ -75,7 +74,7 @@ export const createSchedule = async (req, res) => {
       arrivalTime,
       fare,
       availableSeats: bus.totalSeats,
-      company: user.company,
+      company: user.role === 'superadmin' ? bus.company : user.company,
       createdBy: user._id,
     });
 
@@ -102,8 +101,8 @@ export const createSchedule = async (req, res) => {
 
 export const getCompanySchedules = async (req, res) => {
   try {
-    const companyId = req.user.company;
-    const schedules = await Schedule.find({ company: companyId })
+    const query = req.user.role === 'superadmin' ? {} : { company: req.user.company };
+    const schedules = await Schedule.find(query)
       .populate("route", "fromCity toCity from to")
       .populate("bus", "busNumber type totalSeats")
       .populate("operator", "name email")
