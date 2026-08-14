@@ -252,7 +252,8 @@ export const swaggerDocument = {
     "/companies/company-requests": {
       "post": {
         "tags": ["Company Management"],
-        "summary": "Submit a new transport company registration request",
+        "summary": "Submit a new transport company registration request (Requires logged-in user or userId)",
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -264,14 +265,16 @@ export const swaggerDocument = {
                   "name": { "type": "string", "example": "Faisal Movers" },
                   "email": { "type": "string", "example": "info@faisalmovers.com" },
                   "address": { "type": "string", "example": "Lahore, Pakistan" },
-                  "phone": { "type": "string", "example": "042-111-222-333" }
+                  "phone": { "type": "string", "example": "042-111-222-333" },
+                  "userId": { "type": "string", "example": "67a123456789abcdef012345" }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Company request created successfully" }
+          "201": { "description": "Company request created successfully. Waiting for Super Admin approval." },
+          "400": { "description": "Missing required fields or user account reference" }
         }
       }
     },
@@ -301,7 +304,7 @@ export const swaggerDocument = {
     "/companies/approve/{id}": {
       "put": {
         "tags": ["Company Management"],
-        "summary": "Approve or reject company registration (Superadmin only)",
+        "summary": "Approve or reject company registration (Promotes creator to Company Admin upon approval)",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
@@ -321,7 +324,7 @@ export const swaggerDocument = {
           }
         },
         "responses": {
-          "200": { "description": "Company status updated" }
+          "200": { "description": "Company status updated and creator promoted to companyadmin if approved" }
         }
       }
     },

@@ -4,36 +4,38 @@ import { sendError } from "../../helper/Error.helper.js";
 
 export const CreateCompany = async (req, res) => {
   try {
-    const { name, email, address, phone } = req.body;
+    const { name, email, address, phone, userId } = req.body;
 
     if (!name || !email || !address) {
-      return sendError(res, 400, "Please provide all required fields");
+      return sendError(res, 400, "Please provide all required fields (name, email, address)");
     }
 
     const existing = await Company.findOne({ email: email.toLowerCase() });
-    if (existing) return sendError(res, 409, "Company already exists");
+    if (existing) return sendError(res, 409, "Company already exists with this email");
+
+    const createdBy = req.user ? req.user._id : (userId || null);
+
+    if (!createdBy) {
+      return sendError(res, 400, "User account required. Please log in or provide userId to create a company request.");
+    }
 
     const company = await Company.create({
       name,
       email: email.toLowerCase(),
       address,
       phone,
-      createdBy: req.user._id,
+      createdBy,
       status: "pending",
     });
 
-    if (req.user.role === "companyadmin") {
-      await User.findByIdAndUpdate(req.user._id, { company: company._id });
-    }
-
     return res.status(201).json({
       success: true,
-      message: "Company created successfully. Waiting for approval.",
+      message: "Company request submitted successfully. Waiting for Super Admin approval.",
       company,
     });
   } catch (error) {
     console.error("CreateCompany Error:", error);
-    return sendError(res, 500, "Server error while creating company");
+    return sendError(res, 500, error.message || "Server error while creating company");
   }
 };
 
@@ -55,9 +57,22 @@ export const ApproveCompany = async (req, res) => {
 
     await company.save();
 
+    // When Super Admin approves the company, promote creator to Company Admin
+    if (action === "approve" && company.createdBy) {
+      const creator = await User.findById(company.createdBy);
+      if (creator) {
+        creator.role = "companyadmin";
+        creator.company = company._id;
+        creator.status = "approved";
+        await creator.save();
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      message: `Company ${action} created successfully`,
+      message: action === "approve"
+        ? "Company approved successfully and creator promoted to Company Admin"
+        : "Company rejected successfully",
       company,
     });
   } catch (error) {
