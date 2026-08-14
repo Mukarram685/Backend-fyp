@@ -4,16 +4,21 @@ import { sendError } from '../../helper/Error.helper.js';
 
 export const createBus = async (req, res) => {
   try {
-    const { busNumber, registrationNumber, type, totalSeats, seatLayout, amenities } = req.body;
+    const { busNumber, registrationNumber, type, totalSeats, seatLayout, amenities, company: companyId } = req.body;
     const user = req.user;
 
-    if (!['operator', 'companyadmin'].includes(user.role)) {
-      return sendError(res, 403, "Only operators and company admins can add buses");
+    if (!['operator', 'companyadmin', 'superadmin'].includes(user.role)) {
+      return sendError(res, 403, "Only operators, company admins, and superadmins can add buses");
     }
 
-    const company = await Company.findById(user.company);
-    if (!company || company.status !== 'approved') {
-      return sendError(res, 403, "Your company is not approved yet");
+    const targetCompanyId = user.role === 'superadmin' ? (companyId || user.company) : user.company;
+    if (!targetCompanyId) {
+      return sendError(res, 400, "Company ID is required to add a bus");
+    }
+
+    const company = await Company.findById(targetCompanyId);
+    if (!company || (user.role !== 'superadmin' && company.status !== 'approved')) {
+      return sendError(res, 403, "Target company is not approved or not found");
     }
 
     const bus = await Bus.create({
@@ -23,7 +28,7 @@ export const createBus = async (req, res) => {
       totalSeats,
       seatLayout: seatLayout || '2x2',
       amenities: amenities || [],
-      company: user.company,
+      company: targetCompanyId,
       operator: user._id
     });
 

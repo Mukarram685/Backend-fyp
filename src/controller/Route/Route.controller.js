@@ -4,18 +4,21 @@ import { sendError } from '../../helper/Error.helper.js';
 
 export const createRoute = async (req, res) => {
     try {
-        const { from, to, fromCity, toCity, distance, duration } = req.body;
+        const { from, to, fromCity, toCity, distance, duration, company: companyId } = req.body;
         const user = req.user;
 
         if (!from || !to || !fromCity || !toCity) {
             return sendError(res, 400, "From, To, cities are required");
         }
 
-        const company = await Company.findById(user.company);
-        console.log('company in route controller', company)
-        if (!company || user.status !== 'approved') {
-            console.log('company not approved', company, user.status)
-            return sendError(res, 403, "Your company is not approved yet");
+        const targetCompanyId = user.role === 'superadmin' ? (companyId || user.company) : user.company;
+        if (!targetCompanyId) {
+            return sendError(res, 400, "Company ID is required to create a route");
+        }
+
+        const company = await Company.findById(targetCompanyId);
+        if (!company || (user.role !== 'superadmin' && (company.status !== 'approved' || user.status !== 'approved'))) {
+            return sendError(res, 403, "Company is not approved or not found");
         }
 
         const route = await Route.create({
@@ -25,7 +28,7 @@ export const createRoute = async (req, res) => {
             toCity: toCity.trim(),
             distance,
             duration,
-            company: user.company,
+            company: targetCompanyId,
             createdBy: user._id
         });
 
