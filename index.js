@@ -17,6 +17,9 @@ import BookingRouter from './src/route/Booking.route.js';
 import PaymentRouter from './src/route/Payment.route.js';
 import PayoutRouter from './src/route/Payout.route.js';
 import { processAutomaticPayouts } from './src/controller/Payout/Payout.controller.js';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerDocument } from './src/config/swagger.js';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -26,7 +29,7 @@ if (!process.env.MONGO_URL) {
 
 console.log(`Server initializing... NODE_ENV: ${process.env.NODE_ENV}`);
 
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.use(morgan('dev'));
 app.use(compression());
@@ -50,6 +53,10 @@ app.use(cors());
 
 ConnectDB();
 
+// Swagger Documentation Endpoints
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 // Run automatic payout engine check every 5 minutes in background (only when NOT on Vercel)
 if (!process.env.VERCEL) {
     setInterval(processAutomaticPayouts, 5 * 60 * 1000);
@@ -57,7 +64,7 @@ if (!process.env.VERCEL) {
 }
 
 app.get('/', (req, res) => {
-    res.send('Welcome to the Bus Booking API');
+    res.send('Welcome to the Bus Booking API. Access Swagger Documentation at <a href="/api-docs">/api-docs</a>');
 });
 
 app.use('/api/v1/operator', OperatorRouter);
@@ -91,8 +98,9 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     });
 }
 
-// app.listen(PORT, () => {
-//     console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+})
 });
 
 export default app;
