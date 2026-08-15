@@ -118,82 +118,83 @@ export const searchSchedules = async (req, res) => {
   try {
     const { fromCity, toCity, date, startDate, endDate } = req.query;
 
-    if (!fromCity || !toCity) {
-      return sendError(res, 400, "fromCity and toCity are required");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let query = {
+      status: 'active',
+      availableSeats: { $gt: 0 },
+    };
+
+    if (fromCity && toCity) {
+      const normalize = (value) => value.trim().replace(/\s+/g, " ");
+      const routes = await Route.find({
+        fromCity: {
+          $regex: normalize(fromCity),
+          $options: "i",
+        },
+        toCity: {
+          $regex: normalize(toCity),
+          $options: "i",
+        },
+      }).select("_id");
+
+      const routeIds = routes.map((r) => r._id);
+
+      if (routeIds.length === 0) {
+        return res.json({
+          success: true,
+          count: 0,
+          fromCity,
+          toCity,
+          date,
+          startDate,
+          endDate,
+          schedules: [],
+        });
+      }
+      query.route = { $in: routeIds };
     }
 
-    const normalize = (value) => value.trim().replace(/\s+/g, " ");
-    const routes = await Route.find({
-      fromCity: {
-        $regex: normalize(fromCity),
-        $options: "i",
-      },
-      toCity: {
-        $regex: normalize(toCity),
-        $options: "i",
-      },
-    }).select("_id");
-
-    const routeIds = routes.map((r) => r._id);
-
-    if (routeIds.length === 0) {
-      return res.json({
-        success: true,
-        count: 0,
-        fromCity,
-        toCity,
-        date,
-        startDate,
-        endDate,
-        schedules: [],
-      });
-    }
-
-    let dateFilter = {};
     if (startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      dateFilter = {
-        departureDate: {
-          $gte: start,
-          $lte: end,
-        }
+      query.departureDate = {
+        $gte: start,
+        $lte: end,
       };
     } else if (date) {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
-      dateFilter = {
-        departureDate: {
-          $gte: startOfDay,
-          $lte: endOfDay,
-        }
+      query.departureDate = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    } else {
+      query.departureDate = {
+        $gte: today,
       };
     }
 
-    const schedules = await Schedule.find({
-      route: { $in: routeIds },
-      ...dateFilter,
-      status: 'active',
-      availableSeats: { $gt: 0 },
-    })
+    const schedules = await Schedule.find(query)
       .populate("route", "fromCity toCity from to duration")
       .populate("bus", "busNumber type amenities totalSeats seatLayout")
       .populate("company", "name")
       .populate("operator", "name email")
-      .sort({ departureTime: 1 });
+      .sort({ departureDate: 1, departureTime: 1 });
 
     res.json({
       success: true,
       count: schedules.length,
-      fromCity,
-      toCity,
-      date,
-      startDate,
-      endDate,
+      fromCity: fromCity || null,
+      toCity: toCity || null,
+      date: date || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
       schedules,
     });
 
