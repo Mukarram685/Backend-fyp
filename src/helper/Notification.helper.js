@@ -9,44 +9,66 @@ export const sendPushNotification = async (userId, title, message, data = {}) =>
   const appId = process.env.ONESIGNAL_APP_ID;
   const apiKey = process.env.ONESIGNAL_REST_API_KEY;
 
+  // console.log(`\n=================== [OneSignal Push Trigger] ===================`);
+  // console.log(`[OneSignal Helper] Target User ID: ${userId}`);
+  // console.log(`[OneSignal Helper] App ID: ${appId}`);
+  // console.log(`[OneSignal Helper] Title: "${title}" | Message: "${message}"`);
+  // console.log(`[OneSignal Helper] Data:`, data);
+
   if (!appId || !apiKey || apiKey === 'YOUR_ONESIGNAL_REST_API_KEY') {
     console.warn("[OneSignal Helper] OneSignal credentials are not configured properly. Skipping push notification.");
+    // console.log(`=================================================================\n`);
     return false;
   }
 
+  const targetUserId = String(userId);
+
   try {
-    const response = await fetch('https://api.onesignal.com/notifications', {
+    const authHeader = apiKey.startsWith('os_v2_') ? `Key ${apiKey}` : `Basic ${apiKey}`;
+
+    const payload = {
+      app_id: appId,
+      include_external_user_ids: [targetUserId],
+      include_aliases: {
+        external_id: [targetUserId]
+      },
+      target_channel: "push",
+      headings: {
+        en: title
+      },
+      contents: {
+        en: message
+      },
+      data: data
+    };
+
+    console.log(`[OneSignal Helper] Sending payload to OneSignal:`, JSON.stringify(payload));
+
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${apiKey}`
+        'Authorization': authHeader
       },
-      body: JSON.stringify({
-        app_id: appId,
-        include_aliases: {
-          external_id: [String(userId)]
-        },
-        target_channel: "push",
-        headings: {
-          en: title
-        },
-        contents: {
-          en: message
-        },
-        data: data
-      })
+      body: JSON.stringify(payload)
     });
 
     const responseData = await response.json();
-    if (!response.ok) {
-      console.error("[OneSignal Helper] Error response from OneSignal:", responseData);
+    // console.log(`[OneSignal Helper] OneSignal API HTTP Status: ${response.status}`);
+    // console.log(`[OneSignal Helper] OneSignal Response Body:`, JSON.stringify(responseData));
+
+    if (!response.ok || (responseData.errors && responseData.errors.length > 0)) {
+      console.error(`[OneSignal Helper] Error response for target user (${targetUserId}):`, responseData);
+      // console.log(`=================================================================\n`);
       return false;
     }
 
-    console.log("[OneSignal Helper] Push notification sent successfully:", responseData);
+    console.log(`[OneSignal Helper] SUCCESS: Notification accepted by OneSignal for user (${targetUserId})`);
+    // console.log(`=================================================================\n`);
     return true;
   } catch (error) {
-    console.error("[OneSignal Helper] Exception sending push notification:", error);
+    console.error(`[OneSignal Helper] EXCEPTION sending push notification to user (${userId}):`, error);
+    // console.log(`=================================================================\n`);
     return false;
   }
 };

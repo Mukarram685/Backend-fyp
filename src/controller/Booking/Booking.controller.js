@@ -126,7 +126,8 @@ export const bookSeats = async (req, res) => {
         pnr: ticketDetails.pnr,
         type: 'booking_confirmation'
       }
-    ).catch(err => console.error("Error triggering push notification:", err));
+    ).then(res => {
+    }).catch(err => console.error("[Booking Controller] Error triggering push notification:", err));
 
     res.status(201).json({
       success: true,
@@ -356,7 +357,17 @@ export const cancelBooking = async (req, res) => {
       }
     );
 
-    // In real app: Initiate refund via JazzCash/EasyPaisa API here
+    // Send push notification for cancellation
+    sendPushNotification(
+      user._id,
+      "Booking Cancelled ❌",
+      `Your booking (PNR: ${booking.pnr}) has been cancelled. Refund of PKR ${refundAmount} initiated.`,
+      {
+        bookingId: booking._id.toString(),
+        pnr: booking.pnr,
+        type: 'booking_cancellation'
+      }
+    ).catch(err => console.error("Error triggering cancellation push notification:", err));
 
     res.json({
       success: true,
