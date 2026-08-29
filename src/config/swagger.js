@@ -36,6 +36,7 @@ export const swaggerDocument = {
           "name": { "type": "string" },
           "email": { "type": "string" },
           "phoneNumber": { "type": "string" },
+          "cnic": { "type": "string", "example": "35202-1234567-1" },
           "role": { "type": "string", "enum": ["user", "operator", "companyadmin", "superadmin"] },
           "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
           "company": { "type": "string" }
@@ -134,6 +135,7 @@ export const swaggerDocument = {
                   "email": { "type": "string", "example": "john@example.com" },
                   "password": { "type": "string", "example": "password123" },
                   "phoneNumber": { "type": "string", "example": "03001234567" },
+                  "cnic": { "type": "string", "example": "35202-1234567-1" },
                   "role": { "type": "string", "enum": ["user", "operator"], "example": "user" },
                   "company": { "type": "string", "example": "60d0fe4f5311236168a109ca" },
                   "operatorType": { "type": "string", "example": "trip_operator" }
@@ -225,6 +227,7 @@ export const swaggerDocument = {
                   "name": { "type": "string" },
                   "email": { "type": "string" },
                   "phoneNumber": { "type": "string" },
+                  "cnic": { "type": "string", "example": "35202-1234567-1" },
                   "password": { "type": "string" }
                 }
               }

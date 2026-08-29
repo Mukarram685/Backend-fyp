@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 
 export const RegisterUser = async (req, res) => {
     try {
-        const { name, email, password, role, company, phoneNumber, operatorType, operatorScope } = req.body;
+        const { name, email, password, role, company, phoneNumber, cnic, operatorType, operatorScope } = req.body;
 
         if (!name || !email || !password || !phoneNumber) {
             return sendError(res, 400, "Please provide all required fields");
@@ -34,6 +34,7 @@ export const RegisterUser = async (req, res) => {
             role: role || "user",
             company: company || null,
             phoneNumber,
+            cnic: cnic || null,
             status,
             approvedBy: role === "superadmin" ? null : undefined,
             operatorType: role === "operator" ? operatorType : null,
@@ -48,6 +49,7 @@ export const RegisterUser = async (req, res) => {
                 name: newUser.name,
                 email: newUser.email,
                 phoneNumber: newUser.phoneNumber,
+                cnic: newUser.cnic,
                 role: newUser.role,
                 status: newUser.status,
             },
@@ -93,6 +95,7 @@ export const SignInUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phoneNumber: user.phoneNumber,
+                cnic: user.cnic,
                 role: user.role,
                 company: user.company,
                 // operatorType: user.operatorType,
@@ -107,7 +110,7 @@ export const SignInUser = async (req, res) => {
 
 
 export const UpdateUser = async (req, res) => {
-    const { name, email, password, phoneNumber } = req.body;
+    const { name, email, password, phoneNumber, cnic } = req.body;
     const { id } = req.params;
 
     try {
@@ -128,6 +131,7 @@ export const UpdateUser = async (req, res) => {
         if (name) updateFields.name = name.trim();
         if (email) updateFields.email = email.toLowerCase().trim();
         if (phoneNumber) updateFields.phoneNumber = phoneNumber.trim();
+        if (cnic) updateFields.cnic = cnic.trim();
         if (password) {
             const salt = await bcrypt.genSalt(12);
             updateFields.password = await bcrypt.hash(password, salt);

@@ -24,9 +24,13 @@ const UserSchema = new mongoose.Schema({
     },
 
     phoneNumber: {
-        type: Number,
+        type: String,
         trim: true,
-        // required: true,
+    },
+
+    cnic: {
+        type: String,
+        trim: true,
     },
 
     role: {

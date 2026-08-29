@@ -4,7 +4,7 @@ const getUser = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const user = await User.findById(id).select("email name status role createdAt company").populate("company", "name");
+        const user = await User.findById(id).select("email name status role createdAt company phoneNumber cnic").populate("company", "name");
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -17,6 +17,7 @@ const getUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phoneNumber,
+                cnic: user.cnic,
                 status: user.status,
                 role: user.role,
                 company: user.company,
@@ -50,6 +51,7 @@ const updateUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phoneNumber,
+                cnic: user.cnic,
                 status: user.status,
                 role: user.role,
                 createdAt: user.createdAt,
