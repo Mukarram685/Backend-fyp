@@ -23,20 +23,31 @@ import { swaggerDocument } from './src/config/swagger.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxy (needed for rate-limiting on Vercel/proxies)
+app.set('trust proxy', 1);
+
+// Enable CORS as the first middleware to handle all preflight and regular requests
+app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
+app.options('*', cors());
+
 if (!process.env.MONGO_URL) {
     console.warn("WARNING: MONGO_URL environment variable is missing. Database connection will fail.");
 }
 
 console.log(`Server initializing... NODE_ENV: ${process.env.NODE_ENV}`);
 
-app.use(helmet({ contentSecurityPolicy: false }));
-
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
 app.use(morgan('dev'));
 app.use(compression());
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per window
+    max: 200, // Limit each IP
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -48,8 +59,6 @@ app.post('/api/v1/payment/webhook', express.raw({ type: 'application/json' }), s
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use(cors());
 
 ConnectDB();
 
