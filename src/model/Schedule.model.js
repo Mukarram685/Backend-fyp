@@ -39,7 +39,7 @@ const ScheduleSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['active', 'cancelled', 'completed', 'in-progress'],
+    enum: ['active', 'scheduled', 'cancelled', 'completed', 'in-progress', 'delayed'],
     default: 'active'
   },
   company: {

@@ -47,7 +47,7 @@ export const getTripPassengers = async (req, res) => {
     }
 
     const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
-    const isAssignedViaBus = schedule.bus.operator.toString() === operatorId.toString();
+    const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === operatorId.toString();
 
     if (!isAssignedDirectly && !isAssignedViaBus) {
       return sendError(res, 403, 'Not authorized to view passengers for this trip');
@@ -96,7 +96,7 @@ export const completeTrip = async (req, res) => {
     }
 
     const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
-    const isAssignedViaBus = schedule.bus.operator.toString() === operatorId.toString();
+    const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === operatorId.toString();
 
     if (!isAssignedDirectly && !isAssignedViaBus) {
       return sendError(res, 403, 'Not authorized to update this trip');
@@ -133,7 +133,7 @@ export const startTrip = async (req, res) => {
     }
 
     const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
-    const isAssignedViaBus = schedule.bus.operator.toString() === operatorId.toString();
+    const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === operatorId.toString();
 
     if (!isAssignedDirectly && !isAssignedViaBus) {
       return sendError(res, 403, 'Not authorized to update this trip');

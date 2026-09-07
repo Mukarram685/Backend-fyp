@@ -135,3 +135,21 @@ export const deleteBus = async (req, res) => {
     sendError(res, 500, "Server error");
   }
 };
+
+export const getAmenities = async (req, res) => {
+  try {
+    const amenities = Bus.schema.path('amenities').caster.enumValues || [
+      'WiFi', 'Charging Port', 'TV', 'Blanket', 'Water', 'Snacks'
+    ];
+    res.json({
+      success: true,
+      amenities
+    });
+  } catch (error) {
+    res.json({
+      success: true,
+      amenities: ['WiFi', 'Charging Port', 'TV', 'Blanket', 'Water', 'Snacks']
+    });
+  }
+};
+

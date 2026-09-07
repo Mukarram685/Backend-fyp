@@ -6,13 +6,15 @@ import {
   getBusById,
   updateBus,
   deleteBus,
-  getAllActiveBuses
+  getAllActiveBuses,
+  getAmenities
 } from '../controller/Bus/Bus.controller.js';
 import { validateScope } from '../middleware/RBAC.middleware.js';
 
 const router = express.Router();
 
 router.get('/all', getAllActiveBuses);
+router.get('/amenities', getAmenities);
 
 router.use(protect);
 

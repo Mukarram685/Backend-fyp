@@ -6,7 +6,15 @@ import { sendError } from '../../helper/Error.helper.js';
 import { logActivity } from '../../helper/Audit.helper.js';
 
 const timeToMinutes = (timeStr) => {
-  const [hours, minutes] = timeStr.split(':').map(Number);
+  if (!timeStr || typeof timeStr !== 'string') return 0;
+  const cleanStr = timeStr.trim();
+  const isPM = /pm/i.test(cleanStr);
+  const isAM = /am/i.test(cleanStr);
+  const parts = cleanStr.replace(/[^\d:]/g, '').split(':');
+  let hours = Number(parts[0]) || 0;
+  let minutes = Number(parts[1]) || 0;
+  if (isPM && hours < 12) hours += 12;
+  if (isAM && hours === 12) hours = 0;
   return hours * 60 + minutes;
 };
 
@@ -40,10 +48,15 @@ export const createSchedule = async (req, res) => {
     const operator = await User.findOne(operatorQuery);
     if (!operator) return sendError(res, 404, "Operator not found or belongs to another company");
 
+    const startOfDay = new Date(departureDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(departureDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
     const busConflict = await Schedule.findOne({
       bus: busId,
-      departureDate: new Date(departureDate),
-      status: 'active'
+      departureDate: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ['active', 'in-progress', 'scheduled'] }
     });
     if (busConflict) return sendError(res, 400, "This bus is already scheduled on this date");
 
@@ -52,11 +65,12 @@ export const createSchedule = async (req, res) => {
 
     const operatorSchedules = await Schedule.find({
       operator: operatorId,
-      departureDate: new Date(departureDate),
-      status: 'active'
+      departureDate: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ['active', 'in-progress', 'scheduled'] }
     });
 
     for (const existing of operatorSchedules) {
+      if (!existing.departureTime || !existing.arrivalTime) continue;
       const exStart = timeToMinutes(existing.departureTime);
       const exEnd = timeToMinutes(existing.arrivalTime);
 
@@ -80,21 +94,23 @@ export const createSchedule = async (req, res) => {
 
     await logActivity(req, 'create_schedule', 'Schedule', schedule._id, `Schedule created for ${departureDate}`);
 
-    await schedule.populate([
-      { path: "route", select: "fromCity toCity from to" },
-      { path: "bus", select: "busNumber type amenities" },
-      { path: "operator", select: "name email" }
-    ]);
+    const populatedSchedule = await Schedule.findById(schedule._id)
+      .populate("route", "fromCity toCity from to")
+      .populate("bus", "busNumber type amenities")
+      .populate("operator", "name email");
 
     res.status(201).json({
       success: true,
       message: "Schedule created successfully",
-      schedule
+      schedule: populatedSchedule
     });
 
   } catch (error) {
     console.error("CreateSchedule Error:", error);
-    sendError(res, 500, "Server error during schedule creation");
+    if (error.code === 11000) {
+      return sendError(res, 400, "This bus is already scheduled on this date");
+    }
+    sendError(res, 500, error.message || "Server error during schedule creation");
   }
 };
 
@@ -122,7 +138,7 @@ export const searchSchedules = async (req, res) => {
     today.setHours(0, 0, 0, 0);
 
     let query = {
-      status: 'active',
+      status: { $in: ['active', 'scheduled'] },
       availableSeats: { $gt: 0 },
     };
 
@@ -201,5 +217,132 @@ export const searchSchedules = async (req, res) => {
   } catch (error) {
     console.error("Search Error:", error);
     sendError(res, 500, "Server error in search");
+  }
+};
+
+export const updateSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { busId, operatorId } = req.body;
+    const user = req.user;
+
+    if (!["companyadmin", "superadmin"].includes(user.role)) {
+      return sendError(res, 403, "Not authorized to update schedule");
+    }
+
+    const scheduleQuery = user.role === 'superadmin' ? { _id: id } : { _id: id, company: user.company };
+    const schedule = await Schedule.findOne(scheduleQuery);
+    if (!schedule) {
+      return sendError(res, 404, "Schedule not found or not belonging to your company");
+    }
+
+    if (['completed', 'cancelled'].includes(schedule.status)) {
+      return sendError(res, 400, `Cannot edit a ${schedule.status} schedule`);
+    }
+
+    if (!busId && !operatorId) {
+      return sendError(res, 400, "Please provide busId or operatorId to update");
+    }
+
+    const startOfDay = new Date(schedule.departureDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const endOfDay = new Date(schedule.departureDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const currentBusId = schedule.bus?._id ? String(schedule.bus._id) : String(schedule.bus);
+    const currentOperatorId = schedule.operator?._id ? String(schedule.operator._id) : String(schedule.operator);
+
+    // 1. Update Bus if provided and changed
+    if (busId && String(busId) !== currentBusId) {
+      const busQuery = user.role === 'superadmin' 
+        ? { _id: busId } 
+        : { _id: busId, company: user.company || schedule.company };
+      const newBus = await Bus.findOne(busQuery);
+      if (!newBus) return sendError(res, 404, "New bus not found or belongs to another company");
+      if (newBus.status === 'inactive') return sendError(res, 400, "Cannot assign an inactive bus");
+
+      const bookedCount = schedule.bookedSeats ? schedule.bookedSeats.length : 0;
+      if (newBus.totalSeats < bookedCount) {
+        return sendError(res, 400, `Cannot assign bus with ${newBus.totalSeats} seats because ${bookedCount} seats are already booked`);
+      }
+
+      if (schedule.bookedSeats && schedule.bookedSeats.length > 0) {
+        const numericSeats = schedule.bookedSeats.map(Number).filter(n => !isNaN(n));
+        if (numericSeats.length > 0) {
+          const maxBookedSeat = Math.max(...numericSeats);
+          if (maxBookedSeat > newBus.totalSeats) {
+            return sendError(res, 400, `Cannot assign bus because booked seat #${maxBookedSeat} exceeds new bus total capacity (${newBus.totalSeats} seats)`);
+          }
+        }
+      }
+
+      // Check bus conflict for the same departure date
+      const busConflict = await Schedule.findOne({
+        _id: { $ne: id },
+        bus: busId,
+        departureDate: { $gte: startOfDay, $lte: endOfDay },
+        status: { $in: ['active', 'in-progress', 'scheduled'] }
+      });
+      if (busConflict) {
+        return sendError(res, 400, "This bus is already assigned to another schedule on this date");
+      }
+
+      schedule.bus = newBus._id;
+      schedule.availableSeats = Math.max(0, newBus.totalSeats - bookedCount);
+    }
+
+    // 2. Update Operator if provided and changed
+    if (operatorId && String(operatorId) !== currentOperatorId) {
+      const operatorQuery = user.role === 'superadmin' 
+        ? { _id: operatorId } 
+        : { _id: operatorId, company: user.company || schedule.company };
+      const newOperator = await User.findOne(operatorQuery);
+      if (!newOperator) return sendError(res, 404, "Operator not found or belongs to another company");
+      if (newOperator.status === 'rejected') return sendError(res, 400, "Cannot assign a rejected operator");
+
+      const newStart = timeToMinutes(schedule.departureTime);
+      const newEnd = timeToMinutes(schedule.arrivalTime);
+
+      const operatorSchedules = await Schedule.find({
+        _id: { $ne: id },
+        operator: operatorId,
+        departureDate: { $gte: startOfDay, $lte: endOfDay },
+        status: { $in: ['active', 'in-progress', 'scheduled'] }
+      });
+
+      for (const existing of operatorSchedules) {
+        if (!existing.departureTime || !existing.arrivalTime) continue;
+        const exStart = timeToMinutes(existing.departureTime);
+        const exEnd = timeToMinutes(existing.arrivalTime);
+
+        if (newStart < exEnd && newEnd > exStart) {
+          return sendError(res, 400, `Operator is already assigned to another trip (${existing.departureTime} - ${existing.arrivalTime}) on this date.`);
+        }
+      }
+
+      schedule.operator = newOperator._id;
+    }
+
+    await schedule.save();
+
+    await logActivity(req, 'update_schedule', 'Schedule', schedule._id, `Updated bus/operator for schedule ${schedule._id}`);
+
+    const updatedSchedule = await Schedule.findById(schedule._id)
+      .populate("route", "fromCity toCity from to")
+      .populate("bus", "busNumber type totalSeats")
+      .populate("operator", "name email");
+
+    res.status(200).json({
+      success: true,
+      message: "Schedule updated successfully",
+      schedule: updatedSchedule
+    });
+
+  } catch (error) {
+    console.error("UpdateSchedule Error:", error);
+    if (error.code === 11000) {
+      return sendError(res, 400, "This bus is already assigned to another schedule on this date");
+    }
+    sendError(res, 500, error.message || "Server error during schedule update");
   }
 };
