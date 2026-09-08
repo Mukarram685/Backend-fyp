@@ -11,12 +11,16 @@ export const swaggerDocument = {
   },
   "servers": [
     {
-      "url": "http://localhost:5000/api/v1",
-      "description": "Local Development Server"
+      "url": "/api/v1",
+      "description": "Current Server (Auto-detect / Relative)"
     },
     {
       "url": "https://backend-fyp-kappa.vercel.app/api/v1",
       "description": "Production Vercel Server"
+    },
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Local Development Server"
     }
   ],
   "components": {
