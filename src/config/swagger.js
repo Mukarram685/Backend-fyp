@@ -107,11 +107,24 @@ export const swaggerDocument = {
           "paymentStatus": { "type": "string", "enum": ["pending", "paid", "refunded"] },
           "bookingStatus": { "type": "string", "enum": ["confirmed", "cancelled"] }
         }
+      },
+      "Feedback": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "email": { "type": "string", "example": "user@example.com" },
+          "name": { "type": "string", "example": "Ahmad" },
+          "description": { "type": "string", "example": "Great bus booking experience!" },
+          "rating": { "type": "number", "example": 5 },
+          "status": { "type": "string", "enum": ["unread", "read", "in_progress", "resolved"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
       }
     }
   },
   "tags": [
-    { "name": "Authentication", "description": "User registration, login, token refresh and session endpoints" },
+    { "name": "Authentication", "description": "User registration, login, token refresh, password recovery, and session endpoints" },
+    { "name": "Feedback", "description": "User feedback submissions, queries, and management" },
     { "name": "Company Management", "description": "Transport company registration and admin controls" },
     { "name": "Operator Operations", "description": "Operator dispatch, trip status, manifest & scope management" },
     { "name": "Fleet (Buses)", "description": "Bus inventory and specifications management" },
@@ -212,6 +225,83 @@ export const swaggerDocument = {
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": { "description": "Logged out successfully" }
+        }
+      }
+    },
+    "/forgot-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Request a 6-digit OTP verification code sent to user email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "example": "user@example.com" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Verification code dispatched to email" },
+          "400": { "description": "Email required" },
+          "404": { "description": "No user found with given email" }
+        }
+      }
+    },
+    "/verify-otp": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Verify 6-digit OTP code before setting new password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "otp"],
+                "properties": {
+                  "email": { "type": "string", "example": "user@example.com" },
+                  "otp": { "type": "string", "example": "583921" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Verification code verified successfully" },
+          "400": { "description": "Invalid or expired verification code" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/reset-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Reset user password with valid OTP code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "otp", "newPassword"],
+                "properties": {
+                  "email": { "type": "string", "example": "user@example.com" },
+                  "otp": { "type": "string", "example": "583921" },
+                  "newPassword": { "type": "string", "example": "newSecurePassword123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password reset successfully" },
+          "400": { "description": "Invalid parameters or expired OTP" }
         }
       }
     },
@@ -814,6 +904,73 @@ export const swaggerDocument = {
         ],
         "responses": {
           "200": { "description": "Password updated" }
+        }
+      }
+    },
+    "/feedback": {
+      "post": {
+        "tags": ["Feedback"],
+        "summary": "Submit user feedback / suggestions (with email notification)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "description"],
+                "properties": {
+                  "email": { "type": "string", "example": "traveler@example.com" },
+                  "name": { "type": "string", "example": "Ali Khan" },
+                  "description": { "type": "string", "example": "The bus was on time and clean! Very happy with the service." },
+                  "rating": { "type": "number", "example": 5 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Feedback submitted successfully" },
+          "400": { "description": "Validation error (missing email or description)" }
+        }
+      },
+      "get": {
+        "tags": ["Feedback"],
+        "summary": "Retrieve all user feedbacks (SuperAdmin / CompanyAdmin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["unread", "read", "in_progress", "resolved"] } }
+        ],
+        "responses": {
+          "200": { "description": "List of user feedbacks with pagination" }
+        }
+      }
+    },
+    "/feedback/{id}/status": {
+      "put": {
+        "tags": ["Feedback"],
+        "summary": "Update feedback status (SuperAdmin / CompanyAdmin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["unread", "read", "in_progress", "resolved"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Feedback status updated successfully" }
         }
       }
     }

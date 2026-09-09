@@ -1,8 +1,10 @@
 import User from "../../model/User.model.js";
 import { sendError } from "../../helper/Error.helper.js";
+import { sendVerificationEmail } from "../../helper/Email.helper.js";
 import Company from "../../model/Company.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 
 export const RegisterUser = async (req, res) => {
@@ -27,6 +29,9 @@ export const RegisterUser = async (req, res) => {
         let status = "pending";
         if (role === "superadmin") status = "approved";
 
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
         const newUser = await User.create({
             name,
             email: email.toLowerCase(),
@@ -39,11 +44,18 @@ export const RegisterUser = async (req, res) => {
             approvedBy: role === "superadmin" ? null : undefined,
             operatorType: role === "operator" ? operatorType : null,
             operatorScope: role === "operator" ? operatorScope : undefined,
+            verificationToken,
+            verificationTokenExpires,
+            isVerified: false,
+        });
+
+        sendVerificationEmail(newUser.email, verificationToken, newUser.name).catch(err => {
+            console.error("Background verification email dispatch failed:", err.message);
         });
 
         return res.status(201).json({
             success: true,
-            message: "Account created successfully, waiting for approval",
+            message: "Account created successfully. Please check your email to verify your account.",
             user: {
                 id: newUser._id,
                 name: newUser.name,
@@ -52,6 +64,7 @@ export const RegisterUser = async (req, res) => {
                 cnic: newUser.cnic,
                 role: newUser.role,
                 status: newUser.status,
+                isVerified: newUser.isVerified,
             },
         });
 
@@ -79,6 +92,13 @@ export const SignInUser = async (req, res) => {
             return sendError(res, 403, "Your account is not approved yet");
         }
 
+        // Check email verification (optional - can be enforced based on requirements)
+        if (!user.isVerified) {
+            // For now, we'll allow login but warn the user
+            // Uncomment the line below to enforce email verification
+            // return sendError(res, 403, "Please verify your email address before logging in");
+        }
+
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
 
@@ -98,6 +118,7 @@ export const SignInUser = async (req, res) => {
                 cnic: user.cnic,
                 role: user.role,
                 company: user.company,
+                isVerified: user.isVerified,
                 // operatorType: user.operatorType,
                 // operatorScope: user.operatorScope,
             },
@@ -260,5 +281,77 @@ export const LogoutUser = async (req, res) => {
     } catch (error) {
         console.error("Logout Error:", error);
         return sendError(res, 500, "Server error during logout");
+    }
+};
+
+export const verifyEmail = async (req, res) => {
+    try {
+        const { token } = req.query;
+
+        if (!token) {
+            return sendError(res, 400, "Verification token is required");
+        }
+
+        const user = await User.findOne({
+            verificationToken: token,
+            verificationTokenExpires: { $gt: new Date() }
+        });
+
+        if (!user) {
+            return sendError(res, 400, "Invalid or expired verification token");
+        }
+
+        user.isVerified = true;
+        user.verificationToken = null;
+        user.verificationTokenExpires = null;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Email verified successfully",
+        });
+    } catch (error) {
+        console.error("Verify Email Error:", error);
+        return sendError(res, 500, "Server error while verifying email");
+    }
+};
+
+export const resendVerificationEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return sendError(res, 400, "Email is required");
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return sendError(res, 404, "User not found");
+        }
+
+        if (user.isVerified) {
+            return sendError(res, 400, "Email is already verified");
+        }
+
+        // Generate new verification token
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        user.verificationToken = verificationToken;
+        user.verificationTokenExpires = verificationTokenExpires;
+        await user.save();
+
+        // Send verification email
+        await sendVerificationEmail(user.email, verificationToken, user.name);
+
+        return res.status(200).json({
+            success: true,
+            message: "Verification email sent successfully",
+        });
+    } catch (error) {
+        console.error("Resend Verification Email Error:", error);
+        return sendError(res, 500, "Server error while resending verification email");
     }
 };
