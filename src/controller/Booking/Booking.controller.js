@@ -2,6 +2,7 @@ import Booking from '../../model/Booking.model.js';
 import Schedule from '../../model/Schedule.model.js';
 import { sendError } from '../../helper/Error.helper.js';
 import RouteModel from '../../model/Route.model.js';
+import Notification from '../../model/Notification.model.js';
 import Stripe from 'stripe';
 import { sendPushNotification } from '../../helper/Notification.helper.js';
 
@@ -117,6 +118,22 @@ export const bookSeats = async (req, res) => {
     const notificationTitle = "Booking Confirmed! 🚌";
     const notificationMessage = `Your booking from ${ticketDetails.fromCity} to ${ticketDetails.toCity} is confirmed! PNR: ${ticketDetails.pnr}`;
     
+    // Save notification to database
+    Notification.create({
+      user: booker._id,
+      booking: booking._id,
+      type: 'booking',
+      title: notificationTitle,
+      message: notificationMessage,
+      read: false,
+      data: {
+        bookingId: booking._id.toString(),
+        pnr: ticketDetails.pnr,
+        fromCity: ticketDetails.fromCity,
+        toCity: ticketDetails.toCity
+      }
+    }).catch(err => console.error("[Booking Controller] Error saving notification to DB:", err));
+
     sendPushNotification(
       booker._id,
       notificationTitle,
@@ -357,11 +374,29 @@ export const cancelBooking = async (req, res) => {
       }
     );
 
+    const cancelTitle = "Booking Cancelled ❌";
+    const cancelMessage = `Your booking (PNR: ${booking.pnr}) has been cancelled. Refund of PKR ${refundAmount} initiated.`;
+
+    // Save notification to database
+    Notification.create({
+      user: user._id,
+      booking: booking._id,
+      type: 'reminder',
+      title: cancelTitle,
+      message: cancelMessage,
+      read: false,
+      data: {
+        bookingId: booking._id.toString(),
+        pnr: booking.pnr,
+        refundAmount
+      }
+    }).catch(err => console.error("Error saving cancellation notification to DB:", err));
+
     // Send push notification for cancellation
     sendPushNotification(
       user._id,
-      "Booking Cancelled ❌",
-      `Your booking (PNR: ${booking.pnr}) has been cancelled. Refund of PKR ${refundAmount} initiated.`,
+      cancelTitle,
+      cancelMessage,
       {
         bookingId: booking._id.toString(),
         pnr: booking.pnr,

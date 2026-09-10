@@ -62,7 +62,7 @@ export const getEmailTransporter = () => {
  */
 export const sendOtpEmail = async (toEmail, otp, userName = 'Valued User') => {
     const transporter = getEmailTransporter();
-    const fromAddress = process.env.EMAIL_FROM || '"BookNGo Support" <no-reply@bookngo.com>';
+    const fromAddress =  '"BookNGo Support" <no-reply@bookngo.com>';
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -154,7 +154,7 @@ export const sendOtpEmail = async (toEmail, otp, userName = 'Valued User') => {
  */
 export const sendVerificationEmail = async (toEmail, verificationToken, userName = 'Valued User') => {
     const transporter = getEmailTransporter();
-    const fromAddress = process.env.EMAIL_FROM || '"BookNGo Support" <no-reply@bookngo.com>';
+    const fromAddress = '"BookNGo Support" <no-reply@bookngo.com>';
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
     const verificationUrl = `${clientUrl}/verify-email?token=${verificationToken}`;
 
@@ -243,7 +243,7 @@ export const sendVerificationEmail = async (toEmail, verificationToken, userName
 export const sendFeedbackNotificationEmail = async ({ email, name = 'User', description, rating }) => {
     const transporter = getEmailTransporter();
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'admin@bookngo.com';
-    const fromAddress = process.env.EMAIL_FROM || '"BookNGo Support" <no-reply@bookngo.com>';
+    const fromAddress = '"BookNGo Support" <no-reply@bookngo.com>';
 
     // Admin notification email template
     const adminHtml = `

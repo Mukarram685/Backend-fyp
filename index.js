@@ -19,6 +19,7 @@ import PaymentRouter from './src/route/Payment.route.js';
 import PayoutRouter from './src/route/Payout.route.js';
 import ProfileRouter from './src/route/Profile.route.js';
 import FeedbackRouter from './src/route/Feedback.route.js';
+import NotificationRouter from './src/route/Notification.route.js';
 import { stripeWebhook } from './src/controller/Payment/Payment.controller.js';
 import { processAutomaticPayouts } from './src/controller/Payout/Payout.controller.js';
 import swaggerUi from 'swagger-ui-express';
@@ -197,6 +198,8 @@ app.use('/api/v1/profile', ProfileRouter);
 app.use('/api/v1/feedback', FeedbackRouter);
 app.use('/api/v1/feedbacks', FeedbackRouter);
 app.use('/feedback', FeedbackRouter);
+app.use('/api/v1/notifications', NotificationRouter);
+app.use('/notifications', NotificationRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
