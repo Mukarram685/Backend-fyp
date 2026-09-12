@@ -197,7 +197,10 @@ export const getScheduleBookings = async (req, res) => {
       }
     }
 
-    const bookings = await Booking.find({ schedule: scheduleId })
+    const bookings = await Booking.find({ 
+      schedule: scheduleId,
+      bookingStatus: { $nin: ['cancelled', 'refunded'] }
+    })
       .populate('passenger', 'name email phoneNumber')
       .populate('schedule', 'departureDate departureTime')
       .populate('schedule.route', 'fromCity toCity')
@@ -246,7 +249,10 @@ export const getRouteBookings = async (req, res) => {
       });
     }
 
-    const bookings = await Booking.find({ schedule: { $in: scheduleIds } })
+    const bookings = await Booking.find({ 
+      schedule: { $in: scheduleIds },
+      bookingStatus: { $nin: ['cancelled', 'refunded'] }
+    })
       .populate('passenger', 'name email phoneNumber')
       .populate({
         path: 'schedule',
@@ -295,12 +301,13 @@ export const getCompanyBookings = async (req, res) => {
       .populate('company', 'name')
       .sort({ createdAt: -1 });
 
-    const totalRevenue = bookings.reduce((sum, b) => sum + b.totalAmount, 0);
+    const activeBookings = bookings.filter(b => b.bookingStatus !== 'cancelled' && b.bookingStatus !== 'refunded');
+    const totalRevenue = activeBookings.reduce((sum, b) => sum + (b.totalAmount || 0) - (b.refundAmount || 0), 0);
 
     res.json({
       success: true,
       role: user.role,
-      totalBookings: bookings.length,
+      totalBookings: activeBookings.length,
       totalRevenue,
       dateRange: {
         from: bookings[bookings.length - 1]?.createdAt || new Date(),
@@ -365,9 +372,10 @@ export const cancelBooking = async (req, res) => {
     await booking.save();
 
     // Free up the seats
-    const seatNumbers = booking.seats.map(s => s.seatNumber);
+    const seatNumbers = booking.seats.map(s => Number(s.seatNumber));
+    const scheduleIdToUpdate = booking.schedule?._id || booking.schedule;
     await Schedule.findByIdAndUpdate(
-      booking.schedule,
+      scheduleIdToUpdate,
       {
         $pullAll: { bookedSeats: seatNumbers },
         $inc: { availableSeats: seatNumbers.length }

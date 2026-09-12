@@ -46,18 +46,24 @@ export const getTripPassengers = async (req, res) => {
       return sendError(res, 404, 'Trip not found');
     }
 
-    const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
-    const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === operatorId.toString();
+    if (req.user.role === 'operator') {
+      const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
+      const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === operatorId.toString();
 
-    if (!isAssignedDirectly && !isAssignedViaBus) {
-      return sendError(res, 403, 'Not authorized to view passengers for this trip');
+      if (!isAssignedDirectly && !isAssignedViaBus) {
+        return sendError(res, 403, 'Not authorized to view passengers for this trip');
+      }
+    } else if (req.user.role === 'companyadmin') {
+      if (schedule.company && schedule.company.toString() !== req.user.company.toString()) {
+        return sendError(res, 403, 'Not authorized to view passengers for this trip');
+      }
     }
 
     console.log(`Fetching passengers for schedule: ${scheduleId}`);
 
     const bookings = await Booking.find({ 
       schedule: scheduleId, 
-      bookingStatus: { $ne: 'cancelled' } 
+      bookingStatus: { $nin: ['cancelled', 'refunded'] } 
     }).populate('passenger', 'name email phoneNumber');
 
     console.log(`Found ${bookings.length} bookings for schedule ${scheduleId}`);
