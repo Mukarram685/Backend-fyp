@@ -6,7 +6,7 @@ import Notification from '../../model/Notification.model.js';
 import Stripe from 'stripe';
 import { sendPushNotification } from '../../helper/Notification.helper.js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
 
 export const bookSeats = async (req, res) => {
   try {
@@ -432,5 +432,224 @@ export const cancelBooking = async (req, res) => {
   } catch (error) {
     console.error("Cancel Error:", error);
     sendError(res, 500, "Cancellation failed");
+  }
+};
+
+export const rescheduleBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { newScheduleId, newSeats } = req.body;
+    const user = req.user;
+
+    if (!newScheduleId) {
+      return sendError(res, 400, "newScheduleId is required");
+    }
+
+    if (!newSeats || !Array.isArray(newSeats) || newSeats.length === 0) {
+      return sendError(res, 400, "newSeats array is required");
+    }
+
+    const booking = await Booking.findById(bookingId).populate({
+      path: 'schedule',
+      populate: [
+        { path: 'route' },
+        { path: 'bus' },
+        { path: 'company' }
+      ]
+    });
+
+    if (!booking) {
+      return sendError(res, 404, "Booking not found");
+    }
+
+    // Security: Only the passenger who booked can reschedule
+    if (booking.passenger.toString() !== user._id.toString()) {
+      return sendError(res, 403, "You can only reschedule your own bookings");
+    }
+
+    if (booking.bookingStatus !== 'confirmed') {
+      return sendError(res, 400, `Cannot reschedule a ${booking.bookingStatus} booking`);
+    }
+
+    if (booking.paymentStatus !== 'paid') {
+      return sendError(res, 400, "Cannot reschedule an unpaid booking");
+    }
+
+    const originalSeatCount = booking.seats.length;
+    if (newSeats.length !== originalSeatCount) {
+      return sendError(res, 400, `Seat count mismatch. Original booking has ${originalSeatCount} seats, but ${newSeats.length} seats were selected.`);
+    }
+
+    // CHECK TIME: Must be >1 hour before original departure
+    const departureDateTime = new Date(
+      booking.schedule.departureDate.toISOString().split('T')[0] + 'T' + booking.schedule.departureTime + ':00'
+    );
+    const now = new Date();
+    const timeDifference = departureDateTime - now;
+    const oneHour = 60 * 60 * 1000;
+
+    if (timeDifference <= oneHour) {
+      return sendError(res, 400, "Rescheduling not allowed: Less than 1 hour to departure");
+    }
+
+    // Fetch target schedule
+    const newSchedule = await Schedule.findById(newScheduleId).populate([
+      { path: 'route', select: 'fromCity toCity from to duration' },
+      { path: 'bus', select: 'busNumber type totalSeats amenities' },
+      { path: 'company', select: 'name' }
+    ]);
+
+    if (!newSchedule) {
+      return sendError(res, 404, "Target schedule not found");
+    }
+
+    if (newSchedule.status !== 'active' && newSchedule.status !== 'scheduled') {
+      return sendError(res, 400, "Target trip is no longer active or available");
+    }
+
+    const newDepartureDateTime = new Date(
+      newSchedule.departureDate.toISOString().split('T')[0] + 'T' + newSchedule.departureTime + ':00'
+    );
+    if (newDepartureDateTime <= now) {
+      return sendError(res, 400, "Cannot reschedule to a past or departed trip");
+    }
+
+    if (String(booking.schedule._id) === String(newScheduleId)) {
+      return sendError(res, 400, "You are already booked on this schedule. Please select a different departure.");
+    }
+
+    const requestedSeatNumbers = newSeats.map(s => typeof s === 'object' ? Number(s.seatNumber) : Number(s));
+
+    // Check seat collisions
+    const isAlreadyBooked = newSchedule.bookedSeats.some(seat =>
+      requestedSeatNumbers.includes(Number(seat))
+    );
+    if (isAlreadyBooked) {
+      return sendError(res, 400, "One or more selected seats on the new schedule are already booked");
+    }
+
+    const maxSeatNum = Math.max(...requestedSeatNumbers);
+    const busTotalSeats = newSchedule.bus?.totalSeats || newSchedule.totalSeats || 40;
+    if (maxSeatNum > busTotalSeats) {
+      return sendError(res, 400, `Selected seat #${maxSeatNum} exceeds the new bus capacity (${busTotalSeats} seats)`);
+    }
+
+    const oldScheduleId = booking.schedule._id;
+    const oldSeatNumbers = booking.seats.map(s => Number(s.seatNumber));
+    const oldTotalAmount = booking.totalAmount;
+    const newTotalAmount = newSchedule.fare * requestedSeatNumbers.length;
+    const fareDifference = newTotalAmount - oldTotalAmount;
+
+    // 1. Release old seats from old schedule
+    await Schedule.findByIdAndUpdate(
+      oldScheduleId,
+      {
+        $pullAll: { bookedSeats: oldSeatNumbers },
+        $inc: { availableSeats: oldSeatNumbers.length }
+      }
+    );
+
+    // 2. Reserve new seats in new schedule
+    await Schedule.findByIdAndUpdate(
+      newScheduleId,
+      {
+        $push: { bookedSeats: { $each: requestedSeatNumbers } },
+        $inc: { availableSeats: -requestedSeatNumbers.length }
+      }
+    );
+
+    // 3. Map passenger info to new seats
+    const updatedSeats = booking.seats.map((seatObj, idx) => ({
+      seatNumber: requestedSeatNumbers[idx] || seatObj.seatNumber,
+      passengerName: seatObj.passengerName,
+      passengerCNIC: seatObj.passengerCNIC,
+      passengerPhone: seatObj.passengerPhone,
+      gender: seatObj.gender
+    }));
+
+    // 4. Save history & update booking
+    booking.rescheduleHistory = booking.rescheduleHistory || [];
+    booking.rescheduleHistory.push({
+      previousSchedule: oldScheduleId,
+      previousSeats: booking.seats,
+      previousAmount: oldTotalAmount,
+      rescheduledAt: new Date()
+    });
+
+    booking.schedule = newScheduleId;
+    booking.seats = updatedSeats;
+    booking.totalAmount = newTotalAmount;
+    booking.company = newSchedule.company?._id || newSchedule.company || booking.company;
+    booking.rescheduledAt = new Date();
+
+    await booking.save();
+
+    const rescheduleTitle = "Trip Rescheduled! 🔄";
+    const rescheduleMessage = `Your booking (PNR: ${booking.pnr}) has been rescheduled to ${newSchedule.route?.fromCity} → ${newSchedule.route?.toCity} on ${newSchedule.departureDate.toISOString().split('T')[0]} at ${newSchedule.departureTime}.`;
+
+    Notification.create({
+      user: user._id,
+      booking: booking._id,
+      type: 'booking',
+      title: rescheduleTitle,
+      message: rescheduleMessage,
+      read: false,
+      data: {
+        bookingId: booking._id.toString(),
+        pnr: booking.pnr,
+        fareDifference,
+        newScheduleId: newScheduleId.toString()
+      }
+    }).catch(err => console.error("Error saving reschedule notification to DB:", err));
+
+    sendPushNotification(
+      user._id,
+      rescheduleTitle,
+      rescheduleMessage,
+      {
+        bookingId: booking._id.toString(),
+        pnr: booking.pnr,
+        type: 'booking_reschedule'
+      }
+    ).catch(err => console.error("Error triggering reschedule push notification:", err));
+
+    const populatedBooking = await Booking.findById(booking._id).populate([
+      {
+        path: 'schedule',
+        populate: [
+          { path: 'route', select: 'fromCity toCity from to duration' },
+          { path: 'bus', select: 'busNumber type totalSeats amenities' },
+          { path: 'company', select: 'name' }
+        ]
+      },
+      { path: 'passenger', select: 'name email phoneNumber' }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Trip rescheduled successfully!",
+      fareDifference,
+      ticket: {
+        pnr: booking.pnr,
+        bookingId: booking._id,
+        bookerName: user.name,
+        fromCity: newSchedule.route?.fromCity,
+        toCity: newSchedule.route?.toCity,
+        travelDate: newSchedule.departureDate.toISOString().split('T')[0],
+        departureTime: newSchedule.departureTime,
+        arrivalTime: newSchedule.arrivalTime,
+        busNumber: newSchedule.bus?.busNumber,
+        busType: newSchedule.bus?.type,
+        companyName: newSchedule.company?.name,
+        totalFare: newTotalAmount,
+        seats: updatedSeats,
+        fareDifference
+      },
+      booking: populatedBooking
+    });
+
+  } catch (error) {
+    console.error("Reschedule Error:", error);
+    sendError(res, 500, error.message || "Rescheduling failed");
   }
 };

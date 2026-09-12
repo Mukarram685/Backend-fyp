@@ -49,7 +49,28 @@ const BookingSchema = new mongoose.Schema({
     },
     cancellationReason: {
         type: String
-    }
+    },
+    rescheduledAt: {
+        type: Date
+    },
+    rescheduleHistory: [{
+        previousSchedule: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Schedule'
+        },
+        previousSeats: [{
+            seatNumber: Number,
+            passengerName: String,
+            passengerCNIC: String,
+            passengerPhone: String,
+            gender: String
+        }],
+        previousAmount: Number,
+        rescheduledAt: {
+            type: Date,
+            default: Date.now
+        }
+    }]
 }, { timestamps: true });
 
 BookingSchema.pre('save', function (next) {
