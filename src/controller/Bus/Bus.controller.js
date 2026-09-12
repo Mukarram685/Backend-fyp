@@ -53,7 +53,7 @@ export const createBus = async (req, res) => {
 export const getCompanyBuses = async (req, res) => {
   try {
     const query = req.user.role === 'superadmin' ? {} : { company: req.user.company };
-    const buses = await Bus.find(query).sort({ createdAt: -1 });
+    const buses = await Bus.find(query).populate('company', 'name').sort({ createdAt: -1 });
 
     res.json({
       success: true,

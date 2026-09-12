@@ -49,6 +49,9 @@ export const createSchedule = async (req, res) => {
     const operatorQuery = user.role === 'superadmin' ? { _id: operatorId, role: 'operator' } : { _id: operatorId, role: 'operator', company: user.company };
     const operator = await User.findOne(operatorQuery);
     if (!operator) return sendError(res, 404, "Operator not found or belongs to another company");
+    if (operator.operatorType === 'company_manager' || operator.operatorType === 'city_manager') {
+      return sendError(res, 400, "Cannot assign schedules to Company Managers or City Managers. Please select a Conductor / Trip Operator.");
+    }
 
     const startOfDay = new Date(departureDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
@@ -99,7 +102,8 @@ export const createSchedule = async (req, res) => {
     const populatedSchedule = await Schedule.findById(schedule._id)
       .populate("route", "fromCity toCity from to")
       .populate("bus", "busNumber type amenities")
-      .populate("operator", "name email");
+      .populate("operator", "name email operatorType")
+      .populate("company", "name");
 
     res.status(201).json({
       success: true,
@@ -157,10 +161,35 @@ export const getCompanySchedules = async (req, res) => {
     const schedules = await Schedule.find(query)
       .populate("route", "fromCity toCity from to")
       .populate("bus", "busNumber type totalSeats")
-      .populate("operator", "name email")
-      .sort({ departureDate: 1, departureTime: 1 });
+      .populate("operator", "name email operatorType")
+      .populate("company", "name");
 
-    res.json({ success: true, count: schedules.length, schedules });
+    const isFinished = (status) => status === 'completed' || status === 'cancelled';
+
+    const sortedSchedules = schedules.sort((a, b) => {
+      const aFinished = isFinished(a.status);
+      const bFinished = isFinished(b.status);
+
+      // 1. Active/Upcoming trips first, Completed/Cancelled at the bottom
+      if (!aFinished && bFinished) return -1;
+      if (aFinished && !bFinished) return 1;
+
+      const aDate = new Date(a.departureDate).getTime() + (timeToMinutes(a.departureTime) * 60000);
+      const bDate = new Date(b.departureDate).getTime() + (timeToMinutes(b.departureTime) * 60000);
+
+      if (!aFinished && !bFinished) {
+        // In-progress trip at the very top
+        if (a.status === 'in-progress' && b.status !== 'in-progress') return -1;
+        if (b.status === 'in-progress' && a.status !== 'in-progress') return 1;
+        // Upcoming trips in ascending order (earliest departure first)
+        return aDate - bDate;
+      } else {
+        // Completed/cancelled trips at bottom in descending order (most recently finished first)
+        return bDate - aDate;
+      }
+    });
+
+    res.json({ success: true, count: sortedSchedules.length, schedules: sortedSchedules });
   } catch (error) {
     sendError(res, 500, "Server error");
   }
@@ -347,6 +376,9 @@ export const updateSchedule = async (req, res) => {
       const newOperator = await User.findOne(operatorQuery);
       if (!newOperator) return sendError(res, 404, "Operator not found or belongs to another company");
       if (newOperator.status === 'rejected') return sendError(res, 400, "Cannot assign a rejected operator");
+      if (newOperator.operatorType === 'company_manager' || newOperator.operatorType === 'city_manager') {
+        return sendError(res, 400, "Cannot assign schedules to Company Managers or City Managers. Please select a Conductor / Trip Operator.");
+      }
 
       const newStart = timeToMinutes(schedule.departureTime);
       const newEnd = timeToMinutes(schedule.arrivalTime);

@@ -25,10 +25,44 @@ export const getMyTrips = async (req, res) => {
       }
     }
 
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr || typeof timeStr !== 'string') return 0;
+      const cleanStr = timeStr.trim();
+      const isPM = /pm/i.test(cleanStr);
+      const isAM = /am/i.test(cleanStr);
+      const parts = cleanStr.replace(/[^\d:]/g, '').split(':');
+      let hours = Number(parts[0]) || 0;
+      let minutes = Number(parts[1]) || 0;
+      if (isPM && hours < 12) hours += 12;
+      if (isAM && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    };
+
+    const isFinished = (status) => status === 'completed' || status === 'cancelled';
+
+    const sortedTrips = trips.sort((a, b) => {
+      const aFinished = isFinished(a.status);
+      const bFinished = isFinished(b.status);
+
+      if (!aFinished && bFinished) return -1;
+      if (aFinished && !bFinished) return 1;
+
+      const aDate = new Date(a.departureDate).getTime() + (timeToMinutes(a.departureTime) * 60000);
+      const bDate = new Date(b.departureDate).getTime() + (timeToMinutes(b.departureTime) * 60000);
+
+      if (!aFinished && !bFinished) {
+        if (a.status === 'in-progress' && b.status !== 'in-progress') return -1;
+        if (b.status === 'in-progress' && a.status !== 'in-progress') return 1;
+        return aDate - bDate;
+      } else {
+        return bDate - aDate;
+      }
+    });
+
     res.status(200).json({
       success: true,
-      count: trips.length,
-      trips
+      count: sortedTrips.length,
+      trips: sortedTrips
     });
   } catch (error) {
     console.error('GetMyTrips Error:', error);
