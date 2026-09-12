@@ -18,10 +18,10 @@ router.get('/amenities', getAmenities);
 
 router.use(protect);
 
-router.post('/add', authorizeRoles('companyadmin', 'superadmin'), createBus);
+router.post('/add', authorizeRoles('companyadmin', 'superadmin', 'operator'), createBus);
 router.get('/company', getCompanyBuses);
 router.get('/:id', validateScope('bus', 'view'), getBusById);
-router.put('/:id', authorizeRoles('companyadmin', 'superadmin'), validateScope('bus', 'manage'), updateBus);
-router.delete('/:id', authorizeRoles('companyadmin', 'superadmin'), validateScope('bus', 'manage'), deleteBus);
+router.put('/:id', authorizeRoles('companyadmin', 'superadmin', 'operator'), validateScope('bus', 'manage'), updateBus);
+router.delete('/:id', authorizeRoles('companyadmin', 'superadmin', 'operator'), validateScope('bus', 'manage'), deleteBus);
 
 export default router;

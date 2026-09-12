@@ -33,7 +33,9 @@ export const createSchedule = async (req, res) => {
     const user = req.user;
 
     if (!["companyadmin", "superadmin"].includes(user.role)) {
-      return sendError(res, 403, "Not authorized");
+      if (user.role !== 'operator' || user.operatorType !== 'company_manager') {
+        return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can create schedules");
+      }
     }
 
     const routeQuery = user.role === 'superadmin' ? { _id: routeId } : { _id: routeId, company: user.company };
@@ -117,7 +119,41 @@ export const createSchedule = async (req, res) => {
 
 export const getCompanySchedules = async (req, res) => {
   try {
-    const query = req.user.role === 'superadmin' ? {} : { company: req.user.company };
+    const user = req.user;
+    let query = {};
+
+    if (user.role === 'superadmin') {
+      query = {};
+    } else if (user.role === 'companyadmin' || (user.role === 'operator' && user.operatorType === 'company_manager')) {
+      query = { company: user.company };
+    } else if (user.role === 'operator' && user.operatorType === 'city_manager') {
+      const assignedCities = user.operatorScope?.cities || [];
+      if (assignedCities.length > 0) {
+        const routes = await Route.find({
+          company: user.company,
+          $or: [
+            { fromCity: { $in: assignedCities } },
+            { toCity: { $in: assignedCities } }
+          ]
+        }).select('_id');
+        const routeIds = routes.map(r => r._id);
+        query = { company: user.company, route: { $in: routeIds } };
+      } else {
+        query = { company: user.company };
+      }
+    } else {
+      // trip_operator
+      const buses = await Bus.find({ operator: user._id }).select('_id');
+      const busIds = buses.map(b => b._id);
+      query = {
+        company: user.company,
+        $or: [
+          { operator: user._id },
+          { bus: { $in: busIds } }
+        ]
+      };
+    }
+
     const schedules = await Schedule.find(query)
       .populate("route", "fromCity toCity from to")
       .populate("bus", "busNumber type totalSeats")
@@ -224,16 +260,28 @@ export const updateSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     const { busId, operatorId } = req.body;
-    const user = req.user;
+    const isSuperAdmin = user.role === 'superadmin';
+    const isCompanyAdmin = user.role === 'companyadmin';
+    const isCompanyManager = user.role === 'operator' && user.operatorType === 'company_manager';
+    const isCityManager = user.role === 'operator' && user.operatorType === 'city_manager';
 
-    if (!["companyadmin", "superadmin"].includes(user.role)) {
+    if (!isSuperAdmin && !isCompanyAdmin && !isCompanyManager && !isCityManager) {
       return sendError(res, 403, "Not authorized to update schedule");
     }
 
-    const scheduleQuery = user.role === 'superadmin' ? { _id: id } : { _id: id, company: user.company };
-    const schedule = await Schedule.findOne(scheduleQuery);
+    const scheduleQuery = isSuperAdmin ? { _id: id } : { _id: id, company: user.company };
+    const schedule = await Schedule.findOne(scheduleQuery).populate('route');
     if (!schedule) {
       return sendError(res, 404, "Schedule not found or not belonging to your company");
+    }
+
+    if (isCityManager) {
+      const assignedCities = user.operatorScope?.cities || [];
+      const fromCity = schedule.route?.fromCity;
+      const toCity = schedule.route?.toCity;
+      if (!assignedCities.includes(fromCity) && !assignedCities.includes(toCity)) {
+        return sendError(res, 403, "Access denied: You can only swap driver/bus for trips in your assigned city");
+      }
     }
 
     if (['completed', 'cancelled'].includes(schedule.status)) {

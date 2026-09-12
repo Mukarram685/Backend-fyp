@@ -18,15 +18,42 @@ export const RegisterUser = async (req, res) => {
         const existing = await User.findOne({ email: email.toLowerCase() });
         if (existing) return sendError(res, 409, "Email already registered");
 
+        let targetCompany = company;
+        let finalOperatorType = operatorType;
+        let finalOperatorScope = operatorScope;
+        let status = "pending";
+
+        if (req.user) {
+            if (role === "operator") {
+                if (req.user.role === "operator" && req.user.operatorType === "city_manager") {
+                    targetCompany = req.user.company;
+                    finalOperatorType = "trip_operator";
+                    finalOperatorScope = {
+                        cities: req.user.operatorScope?.cities || [],
+                        buses: [],
+                        schedules: []
+                    };
+                    status = "approved";
+                } else if (req.user.role === "operator" && req.user.operatorType === "company_manager") {
+                    targetCompany = req.user.company;
+                    status = "approved";
+                } else if (req.user.role === "companyadmin") {
+                    targetCompany = req.user.company;
+                    status = "approved";
+                } else if (req.user.role === "superadmin") {
+                    status = "approved";
+                }
+            }
+        }
+
         if (["operator"].includes(role)) {
-            if (!company) {
+            if (!targetCompany) {
                 return sendError(res, 400, "Company ID is required for operators");
             }
-            const companyExists = await Company.findById(company);
+            const companyExists = await Company.findById(targetCompany);
             if (!companyExists) return sendError(res, 404, "Company not found");
         }
 
-        let status = "pending";
         if (role === "superadmin") status = "approved";
 
         const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -37,16 +64,16 @@ export const RegisterUser = async (req, res) => {
             email: email.toLowerCase(),
             password,
             role: role || "user",
-            company: company || null,
+            company: targetCompany || null,
             phoneNumber,
             cnic: cnic || null,
             status,
-            approvedBy: role === "superadmin" ? null : undefined,
-            operatorType: role === "operator" ? operatorType : null,
-            operatorScope: role === "operator" ? operatorScope : undefined,
+            approvedBy: req.user ? req.user._id : (role === "superadmin" ? null : undefined),
+            operatorType: role === "operator" ? finalOperatorType : null,
+            operatorScope: role === "operator" ? finalOperatorScope : undefined,
             verificationToken,
             verificationTokenExpires,
-            isVerified: false,
+            isVerified: req.user ? true : false,
         });
 
         sendVerificationEmail(newUser.email, verificationToken, newUser.name).catch(err => {
@@ -63,8 +90,11 @@ export const RegisterUser = async (req, res) => {
                 phoneNumber: newUser.phoneNumber,
                 cnic: newUser.cnic,
                 role: newUser.role,
+                company: newUser.company,
                 status: newUser.status,
                 isVerified: newUser.isVerified,
+                operatorType: newUser.operatorType,
+                operatorScope: newUser.operatorScope,
             },
         });
 
@@ -119,8 +149,8 @@ export const SignInUser = async (req, res) => {
                 role: user.role,
                 company: user.company,
                 isVerified: user.isVerified,
-                // operatorType: user.operatorType,
-                // operatorScope: user.operatorScope,
+                operatorType: user.operatorType,
+                operatorScope: user.operatorScope,
             },
         });
     } catch (error) {

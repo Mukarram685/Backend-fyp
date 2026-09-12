@@ -47,11 +47,17 @@ export const getTripPassengers = async (req, res) => {
     }
 
     if (req.user.role === 'operator') {
-      const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
-      const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === operatorId.toString();
+      if (req.user.operatorType === 'company_manager' || req.user.operatorType === 'city_manager') {
+        if (schedule.company && req.user.company && schedule.company.toString() !== req.user.company.toString()) {
+          return sendError(res, 403, 'Not authorized to view passengers for this trip');
+        }
+      } else {
+        const isAssignedDirectly = schedule.operator && schedule.operator.toString() === operatorId.toString();
+        const isAssignedViaBus = schedule.bus && schedule.bus.operator && schedule.bus.operator.toString() === operatorId.toString();
 
-      if (!isAssignedDirectly && !isAssignedViaBus) {
-        return sendError(res, 403, 'Not authorized to view passengers for this trip');
+        if (!isAssignedDirectly && !isAssignedViaBus) {
+          return sendError(res, 403, 'Not authorized to view passengers for this trip');
+        }
       }
     } else if (req.user.role === 'companyadmin') {
       if (schedule.company && schedule.company.toString() !== req.user.company.toString()) {

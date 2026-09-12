@@ -9,9 +9,9 @@ router.get('/search', searchSchedules);
 
 router.use(protect);
 
-router.post('/create', authorizeRoles('superadmin', 'companyadmin'), createSchedule);
-router.get('/company', authorizeRoles('superadmin', 'companyadmin'), getCompanySchedules);
-router.put('/update/:id', authorizeRoles('superadmin', 'companyadmin'), updateSchedule);
-router.put('/:id', authorizeRoles('superadmin', 'companyadmin'), updateSchedule);
+router.post('/create', authorizeRoles('superadmin', 'companyadmin', 'operator'), createSchedule);
+router.get('/company', authorizeRoles('superadmin', 'companyadmin', 'operator'), getCompanySchedules);
+router.put('/update/:id', authorizeRoles('superadmin', 'companyadmin', 'operator'), updateSchedule);
+router.put('/:id', authorizeRoles('superadmin', 'companyadmin', 'operator'), updateSchedule);
 
 export default router;

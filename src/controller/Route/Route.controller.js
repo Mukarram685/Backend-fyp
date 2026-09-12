@@ -11,6 +11,12 @@ export const createRoute = async (req, res) => {
             return sendError(res, 400, "From, To, cities are required");
         }
 
+        if (!['companyadmin', 'superadmin'].includes(user.role)) {
+            if (user.role !== 'operator' || user.operatorType !== 'company_manager') {
+                return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can create routes");
+            }
+        }
+
         const targetCompanyId = user.role === 'superadmin' ? (companyId || user.company) : user.company;
         if (!targetCompanyId) {
             return sendError(res, 400, "Company ID is required to create a route");
@@ -90,6 +96,10 @@ export const updateRoute = async (req, res) => {
             return sendError(res, 403, "Not authorized");
         }
 
+        if (req.user.role === 'operator' && req.user.operatorType !== 'company_manager') {
+            return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can modify routes");
+        }
+
         const updated = await Route.findByIdAndUpdate(
             req.params.id,
             { $set: req.body },
@@ -111,6 +121,10 @@ export const deleteRoute = async (req, res) => {
 
         if (req.user.role !== 'superadmin' && route.company.toString() !== req.user.company.toString()) {
             return sendError(res, 403, "Not authorized");
+        }
+
+        if (req.user.role === 'operator' && req.user.operatorType !== 'company_manager') {
+            return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can deactivate routes");
         }
 
         route.status = 'inactive';

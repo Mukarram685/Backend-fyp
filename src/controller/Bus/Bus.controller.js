@@ -7,8 +7,10 @@ export const createBus = async (req, res) => {
     const { busNumber, registrationNumber, type, totalSeats, seatLayout, amenities, company: companyId } = req.body;
     const user = req.user;
 
-    if (!['operator', 'companyadmin', 'superadmin'].includes(user.role)) {
-      return sendError(res, 403, "Only operators, company admins, and superadmins can add buses");
+    if (!['companyadmin', 'superadmin'].includes(user.role)) {
+      if (user.role !== 'operator' || user.operatorType !== 'company_manager') {
+        return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can add buses");
+      }
     }
 
     const targetCompanyId = user.role === 'superadmin' ? (companyId || user.company) : user.company;
@@ -106,6 +108,10 @@ export const updateBus = async (req, res) => {
       return sendError(res, 403, "Not authorized");
     }
 
+    if (req.user.role === 'operator' && req.user.operatorType !== 'company_manager') {
+      return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can update fleet");
+    }
+
     const updatedBus = await Bus.findByIdAndUpdate(
       req.params.id,
       { $set: req.body },
@@ -125,6 +131,10 @@ export const deleteBus = async (req, res) => {
 
     if (req.user.role !== 'superadmin' && bus.company.toString() !== req.user.company.toString()) {
       return sendError(res, 403, "Not authorized");
+    }
+
+    if (req.user.role === 'operator' && req.user.operatorType !== 'company_manager') {
+      return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can deactivate buses");
     }
 
     bus.status = 'inactive';

@@ -22,6 +22,10 @@ export const ApproveOperator = async (req, res) => {
       return sendError(res, 403, "You cannot approve operators from another company");
     }
 
+    if (companyAdmin.role === 'operator' && companyAdmin.operatorType !== 'company_manager') {
+      return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can approve operators");
+    }
+
     operator.status = action === "approve" ? "approved" : "rejected";
     operator.approvedBy = companyAdmin._id;
 

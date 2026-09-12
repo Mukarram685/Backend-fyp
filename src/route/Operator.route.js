@@ -16,7 +16,7 @@ const OperatorRouter = express.Router();
 OperatorRouter.get(
   "/company",
   protect,
-  authorizeRoles("companyadmin", "superadmin"),
+  authorizeRoles("companyadmin", "superadmin", "operator"),
   GetCompanyOperators
 );
 
@@ -25,14 +25,14 @@ OperatorRouter.get(
 OperatorRouter.put(
   "/approve/:id",
   protect,
-  authorizeRoles("companyadmin", "superadmin"),
+  authorizeRoles("companyadmin", "superadmin", "operator"),
   ApproveOperator
 );
 
 OperatorRouter.put(
   "/scope/:id",
   protect,
-  authorizeRoles("companyadmin", "superadmin"),
+  authorizeRoles("companyadmin", "superadmin", "operator"),
   UpdateOperatorScope
 );
 
