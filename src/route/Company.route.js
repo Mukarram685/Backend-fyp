@@ -4,6 +4,7 @@ import {
   ApproveCompany,
   GetCompanies,
   GetCompany,
+  ChangeCompanyPassword,
   deteleCompany,
 } from "../controller/Company/Company.controller.js";
 import { protect, authorizeRoles } from "../middleware/Auth.midleware.js";
@@ -15,6 +16,9 @@ CompanyRoute.post("/company-requests", CreateCompany);
 CompanyRoute.use(protect);
 
 CompanyRoute.put("/approve/:id", authorizeRoles("superadmin"), ApproveCompany);
+CompanyRoute.put("/status/:id", authorizeRoles("superadmin"), ApproveCompany);
+
+CompanyRoute.put("/change-password/:id", authorizeRoles("superadmin", "companyadmin"), ChangeCompanyPassword);
 
 CompanyRoute.get("/list", GetCompanies);
 
