@@ -12,7 +12,7 @@ export const UpdateOperatorScope = async (req, res) => {
       return sendError(res, 403, "Only Company Managers, Company Admins, and Superadmins can update scope");
     }
 
-    const query = admin.role === "superadmin" ? { _id: id } : { _id: id, company: admin.company };
+    const query = admin.role === "superadmin" ? { _id: id, role: "operator" } : { _id: id, company: admin.company, role: "operator" };
     const operator = await User.findOne(query);
     if (!operator) return sendError(res, 404, "Operator not found");
 
@@ -40,12 +40,12 @@ export const UpdateOperatorScope = async (req, res) => {
 export const GetCompanyOperators = async (req, res) => {
   try {
     const admin = req.user;
-    let query = {};
+    let query = { role: "operator" };
 
     if (admin.role === "superadmin") {
-      query = { role: { $in: ["operator", "companyadmin"] } };
+      query = { role: "operator" };
     } else if (admin.role === "companyadmin" || (admin.role === "operator" && admin.operatorType === "company_manager")) {
-      query = { company: admin.company, role: { $in: ["operator", "companyadmin"] } };
+      query = { company: admin.company, role: "operator" };
     } else if (admin.role === "operator" && admin.operatorType === "city_manager") {
       const assignedCities = admin.operatorScope?.cities || [];
       query = {
@@ -57,7 +57,7 @@ export const GetCompanyOperators = async (req, res) => {
         ]
       };
     } else {
-      query = { _id: admin._id };
+      query = { _id: admin._id, role: "operator" };
     }
 
     const operators = await User.find(query).select("-password").populate("company", "name");
