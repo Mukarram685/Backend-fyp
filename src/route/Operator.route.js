@@ -1,5 +1,5 @@
 import express from "express";
-import { GetCompanyOperators, UpdateOperatorScope } from "../controller/Auth/Operator.controller.js";
+import { GetCompanyOperators, UpdateOperatorScope, ChangeOperatorPassword } from "../controller/Auth/Operator.controller.js";
 import { protect, authorizeRoles } from "../middleware/Auth.midleware.js";
 import { ApproveOperator } from "../controller/Auth/ApproveOperator.controller.js";
 import { 
@@ -34,6 +34,13 @@ OperatorRouter.put(
   protect,
   authorizeRoles("companyadmin", "superadmin", "operator"),
   UpdateOperatorScope
+);
+
+OperatorRouter.put(
+  "/change-password/:id",
+  protect,
+  authorizeRoles("companyadmin", "superadmin", "operator"),
+  ChangeOperatorPassword
 );
 
 OperatorRouter.get(

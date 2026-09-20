@@ -43,9 +43,9 @@ export const GetCompanyOperators = async (req, res) => {
     let query = {};
 
     if (admin.role === "superadmin") {
-      query = { role: "operator" };
+      query = { role: { $in: ["operator", "companyadmin"] } };
     } else if (admin.role === "companyadmin" || (admin.role === "operator" && admin.operatorType === "company_manager")) {
-      query = { company: admin.company, role: "operator" };
+      query = { company: admin.company, role: { $in: ["operator", "companyadmin"] } };
     } else if (admin.role === "operator" && admin.operatorType === "city_manager") {
       const assignedCities = admin.operatorScope?.cities || [];
       query = {
@@ -69,5 +69,60 @@ export const GetCompanyOperators = async (req, res) => {
   } catch (error) {
     console.error("GetCompanyOperators Error:", error);
     return sendError(res, 500, "Server error while fetching operators");
+  }
+};
+
+export const ChangeOperatorPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    const currentUser = req.user;
+
+    if (!newPassword || newPassword.length < 6) {
+      return sendError(res, 400, "New password must be at least 6 characters long");
+    }
+
+    const isSuperAdmin = currentUser.role === "superadmin";
+    const isCompanyAdmin = currentUser.role === "companyadmin";
+    const isCompanyManager = currentUser.role === "operator" && currentUser.operatorType === "company_manager";
+
+    if (!isSuperAdmin && !isCompanyAdmin && !isCompanyManager) {
+      return sendError(res, 403, "You do not have permission to change operator passwords");
+    }
+
+    const query = isSuperAdmin ? { _id: id } : { _id: id, company: currentUser.company };
+    const targetUser = await User.findOne(query);
+
+    if (!targetUser) {
+      return sendError(res, 404, "User/Operator not found in your company");
+    }
+
+    // Role hierarchy enforcement
+    if (isCompanyManager) {
+      if (targetUser.role === "superadmin" || targetUser.role === "companyadmin") {
+        return sendError(res, 403, "Company Managers cannot change the password of Company Admins or Superadmins");
+      }
+      if (targetUser.operatorType === "company_manager" && targetUser._id.toString() !== currentUser._id.toString()) {
+        return sendError(res, 403, "Company Managers cannot change the password of other Company Managers");
+      }
+    }
+
+    if (isCompanyAdmin) {
+      if (targetUser.role === "superadmin") {
+        return sendError(res, 403, "Company Admins cannot change the password of Superadmins");
+      }
+    }
+
+    // Assign and save (pre-save hook will hash it)
+    targetUser.password = newPassword;
+    await targetUser.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Password for ${targetUser.name} (${targetUser.email}) updated successfully`,
+    });
+  } catch (error) {
+    console.error("ChangeOperatorPassword Error:", error);
+    return sendError(res, 500, error.message || "Server error while changing password");
   }
 };
