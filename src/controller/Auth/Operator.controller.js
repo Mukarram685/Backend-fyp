@@ -40,24 +40,32 @@ export const UpdateOperatorScope = async (req, res) => {
 export const GetCompanyOperators = async (req, res) => {
   try {
     const admin = req.user;
-    let query = { role: "operator" };
+    let query = { role: "operator", _id: { $ne: admin._id } };
 
     if (admin.role === "superadmin") {
-      query = { role: "operator" };
-    } else if (admin.role === "companyadmin" || (admin.role === "operator" && admin.operatorType === "company_manager")) {
-      query = { company: admin.company, role: "operator" };
+      query = { role: "operator", _id: { $ne: admin._id } };
+    } else if (admin.role === "companyadmin") {
+      query = { company: admin.company, role: "operator", _id: { $ne: admin._id } };
+    } else if (admin.role === "operator" && admin.operatorType === "company_manager") {
+      query = {
+        company: admin.company,
+        role: "operator",
+        _id: { $ne: admin._id },
+        operatorType: { $in: ["city_manager", "trip_operator"] }
+      };
     } else if (admin.role === "operator" && admin.operatorType === "city_manager") {
       const assignedCities = admin.operatorScope?.cities || [];
       query = {
         company: admin.company,
         role: "operator",
+        _id: { $ne: admin._id },
         $or: [
           { "operatorScope.cities": { $in: assignedCities } },
           { operatorType: "trip_operator" }
         ]
       };
     } else {
-      query = { _id: admin._id, role: "operator" };
+      query = { _id: { $ne: admin._id }, role: "operator" };
     }
 
     const operators = await User.find(query).select("-password").populate("company", "name");
