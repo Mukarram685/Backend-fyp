@@ -50,7 +50,7 @@ export const createSchedule = async (req, res) => {
     const operator = await User.findOne(operatorQuery);
     if (!operator) return sendError(res, 404, "Operator not found or belongs to another company");
     if (operator.operatorType === 'company_manager' || operator.operatorType === 'city_manager') {
-      return sendError(res, 400, "Cannot assign schedules to Company Managers or City Managers. Please select a Conductor / Trip Operator.");
+      return sendError(res, 400, "Cannot assign schedules to Company Managers or City Managers. Please select a Trip Operator.");
     }
 
     const startOfDay = new Date(departureDate);
@@ -309,7 +309,7 @@ export const updateSchedule = async (req, res) => {
       const fromCity = schedule.route?.fromCity;
       const toCity = schedule.route?.toCity;
       if (!assignedCities.includes(fromCity) && !assignedCities.includes(toCity)) {
-        return sendError(res, 403, "Access denied: You can only swap driver/bus for trips in your assigned city");
+        return sendError(res, 403, "Access denied: You can only swap operator/bus for trips in your assigned city");
       }
     }
 
@@ -377,7 +377,7 @@ export const updateSchedule = async (req, res) => {
       if (!newOperator) return sendError(res, 404, "Operator not found or belongs to another company");
       if (newOperator.status === 'rejected') return sendError(res, 400, "Cannot assign a rejected operator");
       if (newOperator.operatorType === 'company_manager' || newOperator.operatorType === 'city_manager') {
-        return sendError(res, 400, "Cannot assign schedules to Company Managers or City Managers. Please select a Conductor / Trip Operator.");
+        return sendError(res, 400, "Cannot assign schedules to Company Managers or City Managers. Please select a Trip Operator.");
       }
 
       const newStart = timeToMinutes(schedule.departureTime);
